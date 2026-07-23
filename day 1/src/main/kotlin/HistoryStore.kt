@@ -33,4 +33,10 @@ class HistoryStore(private val capacity: Int = Config.historySize()) {
     /** Снимок истории: свежие записи первыми. */
     @Synchronized
     fun snapshot(): List<HistoryEntry> = entries.reversed()
+
+    /** Полная очистка истории (DELETE /v1/history). */
+    @Synchronized
+    fun clear() {
+        entries.clear()
+    }
 }

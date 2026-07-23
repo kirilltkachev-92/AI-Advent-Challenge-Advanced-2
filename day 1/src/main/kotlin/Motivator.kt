@@ -3,7 +3,7 @@
  * фраза от LLM. Промпт жёстко ограничивает формат (1–2 предложения, без
  * кавычек и преамбул), temperature повышена — фразы должны быть живыми.
  */
-class Motivator(private val client: DeepSeekClient) {
+class Motivator(private val client: ChatClient) {
 
     private val system = """
         Ты — краткий и энергичный мотиватор для разработчика.

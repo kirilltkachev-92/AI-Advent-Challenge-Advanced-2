@@ -17,6 +17,13 @@ dependencies {
     // Без SDK и фреймворков: HTTP — java.net.http + com.sun.net.httpserver,
     // JSON — kotlinx.serialization.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.3")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 kotlin {

@@ -19,11 +19,11 @@ import java.time.Duration
 class DeepSeekClient(
     private val apiKey: String,
     private val model: String = Config.deepSeekModel(),
-) {
+) : ChatClient {
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun chat(system: String, user: String, temperature: Double = 0.0): String {
+    override fun chat(system: String, user: String, temperature: Double): String {
         val body = buildJsonObject {
             put("model", model)
             put("messages", buildJsonArray {

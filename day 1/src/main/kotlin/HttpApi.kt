@@ -15,9 +15,11 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * HTTP-слой сервиса — com.sun.net.httpserver из JDK, без фреймворков.
  *
+ * GET  /            — одностраничный веб-UI (WebUi.PAGE, text/html)
  * GET  /healthz     — статус сервиса (модель, аптайм, счётчик запросов)
  * POST /v1/motivate — {"task": "…"} → {"task", "phrase", "model"}
  * GET  /v1/history  — последние 10 запросов и ответов (в памяти, свежие первыми)
+ * DELETE /v1/history — очистить историю → {"cleared": true}
  *
  * Порядок обороны на /v1/motivate: 405 (метод) → 413 (Content-Length больше
  * потолка — ДО чтения тела) → 400 (парсинг/валидация) → 502 (ошибка DeepSeek).
@@ -29,10 +31,20 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
     private val startedAt = System.currentTimeMillis()
     private val served = AtomicLong(0)
 
-    fun start(): HttpServer {
-        val server = HttpServer.create(InetSocketAddress(Config.bindHost(), Config.port()), 0)
+    fun start(port: Int = Config.port()): HttpServer {
+        val server = HttpServer.create(InetSocketAddress(Config.bindHost(), port), 0)
         server.executor = Executors.newFixedThreadPool(8)
 
+        // Корневой контекст ловит и все неизвестные пути: "/" — UI, остальное — 404 JSON.
+        server.createContext("/") { ex ->
+            handle(ex) {
+                if (ex.requestURI.path != "/") {
+                    return@handle send(ex, 404, error("not_found", "Нет такого пути"))
+                }
+                if (ex.requestMethod != "GET") return@handle send(ex, 405, error("method_not_allowed", "Только GET"))
+                sendHtml(ex, WebUi.PAGE)
+            }
+        }
         server.createContext("/healthz") { ex ->
             handle(ex) {
                 if (ex.requestMethod != "GET") return@handle send(ex, 405, error("method_not_allowed", "Только GET"))
@@ -49,12 +61,20 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         }
         server.createContext("/v1/history") { ex ->
             handle(ex) {
-                if (ex.requestMethod != "GET") return@handle send(ex, 405, error("method_not_allowed", "Только GET"))
-                val entries = history.snapshot()
-                sendRaw(ex, 200, buildString {
-                    append("{\"count\":").append(entries.size)
-                    append(",\"entries\":").append(json.encodeToString(entries)).append("}")
-                })
+                when (ex.requestMethod) {
+                    "GET" -> {
+                        val entries = history.snapshot()
+                        sendRaw(ex, 200, buildString {
+                            append("{\"count\":").append(entries.size)
+                            append(",\"entries\":").append(json.encodeToString(entries)).append("}")
+                        })
+                    }
+                    "DELETE" -> {
+                        history.clear()
+                        send(ex, 200, buildJsonObject { put("cleared", true) })
+                    }
+                    else -> send(ex, 405, error("method_not_allowed", "Только GET и DELETE"))
+                }
             }
         }
 
@@ -133,6 +153,13 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         val bytes = body.toByteArray(Charsets.UTF_8)
         ex.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
         ex.sendResponseHeaders(status, bytes.size.toLong())
+        ex.responseBody.write(bytes)
+    }
+
+    private fun sendHtml(ex: HttpExchange, html: String) {
+        val bytes = html.toByteArray(Charsets.UTF_8)
+        ex.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
+        ex.sendResponseHeaders(200, bytes.size.toLong())
         ex.responseBody.write(bytes)
     }
 }

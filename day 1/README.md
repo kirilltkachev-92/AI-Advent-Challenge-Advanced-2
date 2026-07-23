@@ -15,7 +15,9 @@
                                             │             └──▶ HistoryStore (кольцо на 10 записей)
 клиент ◀──{"task","phrase","model"}─────────┘
 клиент ──GET /v1/history──▶ HttpApi ──▶ HistoryStore.snapshot() (свежие первыми)
+клиент ──DELETE /v1/history▶ HttpApi ──▶ HistoryStore.clear() → {"cleared": true}
 клиент ──GET /healthz────▶ HttpApi (статус, модель, аптайм, счётчик)
+браузер ──GET /──────────▶ HttpApi ──▶ WebUi.PAGE (одностраничный UI, text/html)
 ```
 
 - `Config.kt` — env + `.env`, типизированные геттеры;
@@ -23,8 +25,15 @@
 - `Motivator.kt` — промпт и генерация фразы (1–2 предложения, temperature 1.1);
 - `HistoryStore.kt` — потокобезопасное кольцо последних `HISTORY_SIZE` (по умолчанию 10)
   записей в памяти; значение `<= 0` отключает историю (записи не сохраняются);
+  `clear()` полностью очищает историю — снаружи это `DELETE /v1/history`
+  (200 `{"cleared": true}`; прочие методы, кроме GET, — 405), в UI — кнопка
+  «Очистить историю» (`#clearHistoryBtn`) рядом с заголовком истории;
 - `HttpApi.kt` — транспорт на `com.sun.net.httpserver`: маршруты, оборона
   (405 → 413 до чтения тела → 400 → 502), access-лог, ошибки `{"error":{code,message}}`;
+- `WebUi.kt` — одностраничный веб-UI (GET `/`): самодостаточный HTML с инлайн CSS/JS,
+  тёмная тема, без внешних ресурсов; fetch к `POST /v1/motivate` и `GET /v1/history`,
+  ошибки API показываются текстом из `error.message`; стабильные id для автотестов —
+  `taskInput`, `motivateBtn`, `phraseBox`, `errorBox`, `historyList` (записи — `li.history-item`);
 - `Main.kt` — только wiring.
 
 ## Запуск
@@ -52,4 +61,9 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
       (`Motivator` + `DeepSeekClient`, протокол руками);
 - [x] `GET /v1/history` — последние 10 запросов и ответов, только в памяти
       (`HistoryStore`, кольцо с вытеснением старых);
-- [x] порт 8080 (дефолт в `Config.port()`, переопределяется `PORT`).
+- [x] порт 8080 (дефолт в `Config.port()`, переопределяется `PORT`);
+- [x] веб-UI на `GET /` — ввод задачи, кнопка «Мотивировать», фраза-результат и
+      история с автообновлением (`WebUi.kt`); не-GET → 405, неизвестный путь → 404 JSON;
+- [x] очистка истории — `DELETE /v1/history` → 200 `{"cleared": true}`
+      (`HistoryStore.clear()`), в UI кнопка «Очистить историю» (`#clearHistoryBtn`)
+      без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`.
