@@ -1,0 +1,542 @@
+diff -ru gen1/.env.example gen2/.env.example
+--- gen1/.env.example	2026-07-23 09:12:08
++++ gen2/.env.example	2026-07-23 09:25:32
+@@ -1,9 +1,9 @@
+-# День 1 — HTTP-сервис «мотиватор» (DeepSeek).
++# День 1 — HTTP-сервис «мотиватор».
+ 
+-# --- DeepSeek (обязателен) ---
+-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+-# DEEPSEEK_MODEL=deepseek-chat
++# Ключ DeepSeek (обязателен): https://platform.deepseek.com
++DEEPSEEK_API_KEY=sk-xxxx
+ 
+-# --- Сервер ---
++# Необязательное:
++# DEEPSEEK_MODEL=deepseek-chat
+ # PORT=8080
+ # BIND_HOST=127.0.0.1
+diff -ru gen1/.gitignore gen2/.gitignore
+--- gen1/.gitignore	2026-07-23 09:12:06
++++ gen2/.gitignore	2026-07-23 09:25:30
+@@ -4,3 +4,4 @@
+ *.iml
+ .env
+ .kotlin/
++output/_run.log
+diff -ru gen1/README.md gen2/README.md
+--- gen1/README.md	2026-07-23 09:13:24
++++ gen2/README.md	2026-07-23 09:25:49
+@@ -1,53 +1,54 @@
+ # День 1. HTTP-сервис «мотиватор»
+ 
+-Маленький сервис на JDK-стеке (без фреймворков): принимает описание задачи
+-и возвращает короткую мотивационную фразу, сгенерированную DeepSeek.
+-Последние 10 пар запрос/ответ хранятся в памяти процесса.
++Маленький сервис на JDK-стеке: принимает описание задачи и возвращает короткую
++мотивационную фразу, сгенерированную DeepSeek. Последние 10 обменов хранятся
++в памяти и доступны отдельным эндпоинтом.
+ 
+-## API (порт 8080)
++Порт **8080** — по условию дня (осознанное отступление от конвенции 8000+N
++марафона); переопределяется переменной `PORT`.
+ 
+-| Метод | Путь           | Что делает                                              |
+-|-------|----------------|---------------------------------------------------------|
+-| GET   | `/healthz`     | Статус сервиса: модель, аптайм, счётчик запросов        |
+-| POST  | `/v1/motivate` | `{"task": "..."}` → `{"task", "phrase", "model"}`       |
+-| GET   | `/v1/history`  | Последние 10 запросов и ответов, свежие первыми         |
+-
+-Ошибки — JSON `{"error": {"code", "message"}}`:
+-400 (кривое тело), 405 (метод), 413 (task длиннее лимита), 502 (DeepSeek не ответил).
+-
+ ## Как устроено
+ 
+-- `Config.kt` — env + `.env`, порт/модель/лимиты;
+-- `DeepSeekClient.kt` — `/chat/completions` руками на `java.net.http`;
+-- `Motivator.kt` — промпт «одна фраза, 1–2 предложения» + зачистка ответа;
+-- `HistoryStore.kt` — потокобезопасное кольцо на 10 записей;
+-- `HttpApi.kt` — маршруты и оборона на входе (`com.sun.net.httpserver`);
++```
++клиент ──POST /v1/motivate {"task": …}──▶ HttpApi ──▶ Motivator ──▶ DeepSeekClient ──▶ DeepSeek API
++                                            │             │
++                                            │             └──▶ HistoryStore (кольцо на 10 записей)
++клиент ◀──{"task","phrase","model"}─────────┘
++клиент ──GET /v1/history──▶ HttpApi ──▶ HistoryStore.snapshot() (свежие первыми)
++клиент ──GET /healthz────▶ HttpApi (статус, модель, аптайм, счётчик)
++```
++
++- `Config.kt` — env + `.env`, типизированные геттеры;
++- `DeepSeekClient.kt` — /chat/completions руками на `java.net.http`, без SDK;
++- `Motivator.kt` — промпт и генерация фразы (1–2 предложения, temperature 1.1);
++- `HistoryStore.kt` — потокобезопасное кольцо последних 10 записей в памяти;
++- `HttpApi.kt` — транспорт на `com.sun.net.httpserver`: маршруты, оборона
++  (405 → 413 до чтения тела → 400 → 502), access-лог, ошибки `{"error":{code,message}}`;
+ - `Main.kt` — только wiring.
+ 
+ ## Запуск
+ 
+ ```bash
+-cd "day 1"
+ cp .env.example .env   # вписать DEEPSEEK_API_KEY
+-./run.sh               # сервис на http://127.0.0.1:8080
++./run.sh               # сервис на http://127.0.0.1:8080, лог — output/_run.log
++./demo.sh              # curl-сценарий демо (в соседнем терминале)
+ ```
+ 
+-Проверка:
++| Переменная         | Дефолт          | Зачем                                   |
++|--------------------|-----------------|-----------------------------------------|
++| `DEEPSEEK_API_KEY` | — (обязателен)  | ключ DeepSeek                           |
++| `DEEPSEEK_MODEL`   | `deepseek-chat` | модель генерации                        |
++| `PORT`             | `8080`          | порт HTTP-сервиса                       |
++| `BIND_HOST`        | `127.0.0.1`     | адрес бинда                             |
++| `MAX_TASK_CHARS`   | `2000`          | потолок длины поля `task`               |
++| `MAX_BODY_BYTES`   | `16384`         | потолок тела запроса (проверка до чтения) |
++| `HISTORY_SIZE`     | `10`            | глубина истории в памяти                |
+ 
+-```bash
+-curl -s http://127.0.0.1:8080/healthz
+-curl -s -X POST http://127.0.0.1:8080/v1/motivate \
+-  -H 'Content-Type: application/json' \
+-  -d '{"task": "написать отчёт за квартал"}'
+-curl -s http://127.0.0.1:8080/v1/history
+-```
++## Чеклист задания
+ 
+-### Env
+-
+-| Переменная         | Обязательна | По умолчанию    |
+-|--------------------|-------------|-----------------|
+-| `DEEPSEEK_API_KEY` | да          | —               |
+-| `DEEPSEEK_MODEL`   | нет         | `deepseek-chat` |
+-| `PORT`             | нет         | `8080`          |
+-| `BIND_HOST`        | нет         | `127.0.0.1`     |
+-| `MAX_TASK_CHARS`   | нет         | `2000`          |
++- [x] `GET /healthz` — статус сервиса (status, модель, аптайм, счётчик запросов);
++- [x] `POST /v1/motivate` — `{"task": "…"}` → мотивационная фраза через DeepSeek
++      (`Motivator` + `DeepSeekClient`, протокол руками);
++- [x] `GET /v1/history` — последние 10 запросов и ответов, только в памяти
++      (`HistoryStore`, кольцо с вытеснением старых);
++- [x] порт 8080 (дефолт в `Config.port()`, переопределяется `PORT`).
+diff -ru gen1/build.gradle.kts gen2/build.gradle.kts
+--- gen1/build.gradle.kts	2026-07-23 09:12:05
++++ gen2/build.gradle.kts	2026-07-23 09:24:14
+@@ -14,8 +14,8 @@
+ }
+ 
+ dependencies {
+-    // Как весь марафон — без SDK: клиент DeepSeek на java.net.http,
+-    // сервер — com.sun.net.httpserver, JSON — kotlinx.serialization.
++    // Без SDK и фреймворков: HTTP — java.net.http + com.sun.net.httpserver,
++    // JSON — kotlinx.serialization.
+     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+ }
+ 
+Only in gen2: demo.sh
+diff -ru gen1/run.sh gen2/run.sh
+--- gen1/run.sh	2026-07-23 09:12:11
++++ gen2/run.sh	2026-07-23 09:25:23
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env bash
+-# ./run.sh — поднять сервис «мотиватор» на http://127.0.0.1:8080
++# ./run.sh — поднять сервис-мотиватор (порт 8080, живёт до Ctrl+C)
+ set -euo pipefail
+ cd "$(dirname "$0")"
+ 
+@@ -20,4 +20,6 @@
+ fi
+ 
+ export PATH="$JAVA_HOME/bin:$PATH"
+-exec ./gradlew run -q --console=plain
++
++mkdir -p output
++./gradlew run -q --console=plain 2>&1 | tee "output/_run.log"
+diff -ru gen1/src/main/kotlin/Config.kt gen2/src/main/kotlin/Config.kt
+--- gen1/src/main/kotlin/Config.kt	2026-07-23 09:12:20
++++ gen2/src/main/kotlin/Config.kt	2026-07-23 09:24:25
+@@ -3,8 +3,8 @@
+ import kotlin.io.path.readLines
+ 
+ /**
+- * Конфигурация дня: env имеет приоритет над `.env`, секреты только оттуда.
+- * Контракт: `loadDotEnv()` вызывается один раз в Main до чтения значений.
++ * Конфигурация сервиса: env имеет приоритет над `.env` в рабочей директории.
++ * Секреты (ключ DeepSeek) — только отсюда, в код и git не попадают.
+  */
+ object Config {
+     const val DEEPSEEK_API_BASE = "https://api.deepseek.com"
+@@ -31,9 +31,17 @@
+     fun deepSeekApiKey(): String? = envValue("DEEPSEEK_API_KEY")
+     fun deepSeekModel(): String = envValue("DEEPSEEK_MODEL") ?: "deepseek-chat"
+ 
+-    fun port(): Int = envValue("PORT")?.toIntOrNull() ?: 8080
+     fun bindHost(): String = envValue("BIND_HOST") ?: "127.0.0.1"
+ 
+-    /** Защита от простыней на входе: task длиннее — честный 413. */
++    // По условию дня сервис живёт на 8080 (осознанное отступление от конвенции 8000+N).
++    fun port(): Int = envValue("PORT")?.toIntOrNull() ?: 8080
++
++    /** Потолок длины поля task — защита от чрезмерных промптов. */
+     fun maxTaskChars(): Int = envValue("MAX_TASK_CHARS")?.toIntOrNull() ?: 2000
++
++    /** Потолок размера тела запроса в байтах (проверяется до чтения). */
++    fun maxBodyBytes(): Int = envValue("MAX_BODY_BYTES")?.toIntOrNull() ?: 16_384
++
++    /** Сколько последних записей держит история в памяти. */
++    fun historySize(): Int = envValue("HISTORY_SIZE")?.toIntOrNull() ?: 10
+ }
+diff -ru gen1/src/main/kotlin/DeepSeekClient.kt gen2/src/main/kotlin/DeepSeekClient.kt
+--- gen1/src/main/kotlin/DeepSeekClient.kt	2026-07-23 09:12:28
++++ gen2/src/main/kotlin/DeepSeekClient.kt	2026-07-23 09:24:33
+@@ -1,4 +1,5 @@
+ import kotlinx.serialization.json.Json
++import kotlinx.serialization.json.add
+ import kotlinx.serialization.json.buildJsonArray
+ import kotlinx.serialization.json.buildJsonObject
+ import kotlinx.serialization.json.jsonArray
+@@ -12,10 +13,8 @@
+ import java.time.Duration
+ 
+ /**
+- * Клиент DeepSeek (OpenAI-совместимый /chat/completions), протокол вручную:
+- *   {"model": "...", "messages": [{"role": "...", "content": "..."}], ...}
+- *   → choices[0].message.content
+- * temperature=1.0 — мотивационные фразы должны быть живыми, не под копирку.
++ * Тонкий клиент DeepSeek: OpenAI-совместимый /chat/completions, протокол руками,
++ * без SDK. Не-200 — ошибка с кодом и куском тела, а не молчаливый парсинг.
+  */
+ class DeepSeekClient(
+     private val apiKey: String,
+@@ -24,7 +23,7 @@
+     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+     private val json = Json { ignoreUnknownKeys = true }
+ 
+-    fun chat(system: String, user: String, temperature: Double = 1.0): String {
++    fun chat(system: String, user: String, temperature: Double = 0.0): String {
+         val body = buildJsonObject {
+             put("model", model)
+             put("messages", buildJsonArray {
+diff -ru gen1/src/main/kotlin/HistoryStore.kt gen2/src/main/kotlin/HistoryStore.kt
+--- gen1/src/main/kotlin/HistoryStore.kt	2026-07-23 09:13:55
++++ gen2/src/main/kotlin/HistoryStore.kt	2026-07-23 09:24:44
+@@ -1,24 +1,33 @@
+-import java.time.Instant
+-import java.util.ArrayDeque
++import kotlinx.serialization.Serializable
++import java.time.OffsetDateTime
++import java.time.temporal.ChronoUnit
+ 
++/** Одна запись истории: когда, что спросили, что ответил мотиватор. */
++@Serializable
++data class HistoryEntry(val at: String, val task: String, val phrase: String)
++
+ /**
+- * История запросов в памяти: хранит только последние `capacity` записей,
+- * старые вытесняются. Потокобезопасна (HttpServer обслуживает запросы пулом),
+- * переживает только жизнь процесса — по условию дня персистентность не нужна.
++ * История последних N запросов строго в памяти (по условию дня): кольцо на
++ * ArrayDeque, при переполнении вытесняется самая старая запись. Потокобезопасно —
++ * HttpServer обслуживает запросы из пула потоков.
+  */
+-class HistoryStore(private val capacity: Int = 10) {
++class HistoryStore(private val capacity: Int = Config.historySize()) {
+ 
+-    private val entries = ArrayDeque<HistoryEntry>(capacity)
++    private val entries = ArrayDeque<HistoryEntry>()
+ 
+     @Synchronized
+     fun add(task: String, phrase: String) {
+         if (entries.size == capacity) entries.removeFirst()
+-        entries.addLast(HistoryEntry(task, phrase, Instant.now().toString()))
++        entries.addLast(
++            HistoryEntry(
++                at = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString(),
++                task = task,
++                phrase = phrase,
++            ),
++        )
+     }
+ 
+-    /** Свежие записи первыми. */
++    /** Снимок истории: свежие записи первыми. */
+     @Synchronized
+-    fun latest(): List<HistoryEntry> = entries.toList().asReversed()
++    fun snapshot(): List<HistoryEntry> = entries.reversed()
+ }
+-
+-data class HistoryEntry(val task: String, val phrase: String, val at: String)
+diff -ru gen1/src/main/kotlin/HttpApi.kt gen2/src/main/kotlin/HttpApi.kt
+--- gen1/src/main/kotlin/HttpApi.kt	2026-07-23 09:13:06
++++ gen2/src/main/kotlin/HttpApi.kt	2026-07-23 09:25:06
+@@ -1,13 +1,12 @@
+ import com.sun.net.httpserver.HttpExchange
+ import com.sun.net.httpserver.HttpServer
++import kotlinx.serialization.encodeToString
+ import kotlinx.serialization.json.Json
+ import kotlinx.serialization.json.JsonObject
+-import kotlinx.serialization.json.add
+ import kotlinx.serialization.json.buildJsonObject
+ import kotlinx.serialization.json.jsonObject
+ import kotlinx.serialization.json.jsonPrimitive
+ import kotlinx.serialization.json.put
+-import kotlinx.serialization.json.putJsonArray
+ import kotlinx.serialization.json.putJsonObject
+ import java.net.InetSocketAddress
+ import java.util.concurrent.Executors
+@@ -16,17 +15,16 @@
+ /**
+  * HTTP-слой сервиса — com.sun.net.httpserver из JDK, без фреймворков.
+  *
+- * GET  /healthz     — жив ли сервис (модель, аптайм, счётчик запросов)
+- * POST /v1/motivate — {"task": "..."} → {"task", "phrase", "model"}
+- * GET  /v1/history  — последние 10 пар запрос/ответ, свежие первыми
++ * GET  /healthz     — статус сервиса (модель, аптайм, счётчик запросов)
++ * POST /v1/motivate — {"task": "…"} → {"task", "phrase", "model"}
++ * GET  /v1/history  — последние 10 запросов и ответов (в памяти, свежие первыми)
+  *
+- * Оборона по порядку: 405 (метод) → 413 (task слишком длинный) →
+- * 400 (кривое тело) → 502 (DeepSeek недоступен). Ошибки — JSON {error:{code,message}}.
++ * Порядок обороны на /v1/motivate: 405 (метод) → 413 (Content-Length больше
++ * потолка — ДО чтения тела) → 400 (парсинг/валидация) → 502 (ошибка DeepSeek).
++ * Формат ошибок: {"error": {"code": "…", "message": "…"}}.
+  */
+-class HttpApi(
+-    private val motivator: Motivator,
+-    private val history: HistoryStore,
+-) {
++class HttpApi(private val motivator: Motivator, private val history: HistoryStore) {
++
+     private val json = Json { ignoreUnknownKeys = true }
+     private val startedAt = System.currentTimeMillis()
+     private val served = AtomicLong(0)
+@@ -52,16 +50,10 @@
+         server.createContext("/v1/history") { ex ->
+             handle(ex) {
+                 if (ex.requestMethod != "GET") return@handle send(ex, 405, error("method_not_allowed", "Только GET"))
+-                send(ex, 200, buildJsonObject {
+-                    putJsonArray("history") {
+-                        history.latest().forEach { entry ->
+-                            add(buildJsonObject {
+-                                put("task", entry.task)
+-                                put("phrase", entry.phrase)
+-                                put("at", entry.at)
+-                            })
+-                        }
+-                    }
++                val entries = history.snapshot()
++                sendRaw(ex, 200, buildString {
++                    append("{\"count\":").append(entries.size)
++                    append(",\"entries\":").append(json.encodeToString(entries)).append("}")
+                 })
+             }
+         }
+@@ -73,70 +65,72 @@
+     private fun handleMotivate(ex: HttpExchange) {
+         if (ex.requestMethod != "POST") return send(ex, 405, error("method_not_allowed", "Только POST"))
+ 
+-        val task = parseTask(ex) ?: return
+-        if (task.length > Config.maxTaskChars()) {
+-            return send(
+-                ex, 413,
+-                error("task_too_long", "Задача ${task.length} символов — больше лимита ${Config.maxTaskChars()}"),
+-            )
++        // Размер тела — по Content-Length до чтения; читаем с тем же потолком.
++        val declared = ex.requestHeaders.getFirst("Content-Length")?.toLongOrNull() ?: 0
++        if (declared > Config.maxBodyBytes()) {
++            return send(ex, 413, error("payload_too_large", "Тело больше ${Config.maxBodyBytes()} байт"))
+         }
+-
+-        when (val result = motivator.motivate(task)) {
+-            is MotivationResult.Done -> {
+-                history.add(task, result.phrase)
+-                served.incrementAndGet()
+-                send(ex, 200, buildJsonObject {
+-                    put("task", task)
+-                    put("phrase", result.phrase)
+-                    put("model", Config.deepSeekModel())
+-                })
+-            }
+-            is MotivationResult.Failed ->
+-                send(ex, 502, error("llm_unavailable", "DeepSeek не ответил: ${result.reason}"))
++        val body = ex.requestBody.readNBytes(Config.maxBodyBytes() + 1)
++        if (body.size > Config.maxBodyBytes()) {
++            return send(ex, 413, error("payload_too_large", "Тело больше ${Config.maxBodyBytes()} байт"))
+         }
+-    }
+ 
+-    /** null — ответ 400 уже отправлен. */
+-    private fun parseTask(ex: HttpExchange): String? {
+-        val body = ex.requestBody.readBytes().toString(Charsets.UTF_8)
+         val task = runCatching {
+-            json.parseToJsonElement(body).jsonObject.getValue("task").jsonPrimitive.content.trim()
+-        }.getOrNull()
+-        if (task.isNullOrBlank()) {
+-            send(ex, 400, error("bad_request", "Тело должно быть JSON: {\"task\": \"непустая строка\"}"))
+-            return null
++            json.parseToJsonElement(body.toString(Charsets.UTF_8))
++                .jsonObject.getValue("task").jsonPrimitive.content
++        }.getOrNull()?.trim()
++        when {
++            task == null ->
++                return send(ex, 400, error("bad_request", "Тело должно быть JSON: {\"task\": \"…\"}"))
++            task.isBlank() ->
++                return send(ex, 400, error("bad_request", "Поле task пустое"))
++            task.length > Config.maxTaskChars() ->
++                return send(ex, 400, error("bad_request", "task длиннее ${Config.maxTaskChars()} символов"))
+         }
+-        return task
++
++        val phrase = try {
++            motivator.motivate(task!!)
++        } catch (e: Exception) {
++            return send(ex, 502, error("upstream_error", e.message ?: "DeepSeek недоступен"))
++        }
++        history.add(task, phrase)
++        served.incrementAndGet()
++        send(ex, 200, buildJsonObject {
++            put("task", task)
++            put("phrase", phrase)
++            put("model", Config.deepSeekModel())
++        })
+     }
+ 
+     private fun error(code: String, message: String) = buildJsonObject {
+         putJsonObject("error") { put("code", code); put("message", message) }
+     }
+ 
+-    /** Общая обёртка: access-лог + любая ошибка становится JSON 500, а не тишиной. */
++    /** Общая обёртка: access-лог одной строкой + любая ошибка становится JSON 500. */
+     private fun handle(ex: HttpExchange, block: () -> Unit) {
+         val start = System.nanoTime()
++        var status = -1
+         try {
+             block()
++            status = ex.responseCode
+         } catch (e: Exception) {
+             runCatching { send(ex, 500, error("internal", e.message ?: e.javaClass.simpleName)) }
++            status = 500
+         } finally {
+             val ms = (System.nanoTime() - start) / 1_000_000
+             println(
+                 "%s %s %s ← %s за %d мс".format(
+-                    java.time.LocalTime.now().withNano(0),
+-                    ex.requestMethod,
+-                    ex.requestURI.path,
+-                    ex.remoteAddress.address.hostAddress,
+-                    ms,
++                    ex.requestMethod, ex.requestURI.path, status, ex.remoteAddress.address.hostAddress, ms,
+                 ),
+             )
+             ex.close()
+         }
+     }
+ 
+-    private fun send(ex: HttpExchange, status: Int, body: JsonObject) {
+-        val bytes = body.toString().toByteArray(Charsets.UTF_8)
++    private fun send(ex: HttpExchange, status: Int, body: JsonObject) = sendRaw(ex, status, body.toString())
++
++    private fun sendRaw(ex: HttpExchange, status: Int, body: String) {
++        val bytes = body.toByteArray(Charsets.UTF_8)
+         ex.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
+         ex.sendResponseHeaders(status, bytes.size.toLong())
+         ex.responseBody.write(bytes)
+diff -ru gen1/src/main/kotlin/Main.kt gen2/src/main/kotlin/Main.kt
+--- gen1/src/main/kotlin/Main.kt	2026-07-23 09:13:11
++++ gen2/src/main/kotlin/Main.kt	2026-07-23 09:25:11
+@@ -1,9 +1,9 @@
+ /**
+  * День 1. HTTP-сервис «мотиватор».
+  *
+- * Принимает описание задачи и возвращает короткую мотивационную фразу
+- * от DeepSeek; последние 10 пар запрос/ответ хранятся в памяти.
+- * Main — только wiring: Config → зависимости → сервер.
++ * POST /v1/motivate принимает задачу и возвращает короткую мотивационную
++ * фразу от DeepSeek; история последних 10 обменов доступна на GET /v1/history.
++ * Main — только wiring: конфиг, зависимости, старт сервера.
+  */
+ fun main() {
+     Config.loadDotEnv()
+@@ -11,24 +11,22 @@
+     val apiKey = Config.deepSeekApiKey()
+     if (apiKey == null) {
+         System.err.println(
+-            "DEEPSEEK_API_KEY не задан — сервису нечем генерировать фразы.\n" +
++            "DEEPSEEK_API_KEY не задан — без него /v1/motivate не работает.\n" +
+                 "Скопируйте .env.example в .env и впишите ключ.",
+         )
+         return
+     }
+ 
+     val motivator = Motivator(DeepSeekClient(apiKey))
+-    val history = HistoryStore(capacity = 10)
+-    HttpApi(motivator, history).start()
++    HttpApi(motivator, HistoryStore()).start()
+ 
+     println(
+         """
+         |✓ Мотиватор запущен: http://${Config.bindHost()}:${Config.port()}
+-        |  здоровье:  GET  /healthz
+-        |  мотивация: POST /v1/motivate   {"task": "..."}
+-        |  история:   GET  /v1/history    (последние 10, свежие первыми)
+-        |
+-        |  модель: ${Config.deepSeekModel()} · task ≤ ${Config.maxTaskChars()} симв.
++        |  здоровье:   GET  /healthz
++        |  мотивация:  POST /v1/motivate   {"task": "…"}
++        |  история:    GET  /v1/history    (последние ${Config.historySize()}, в памяти)
++        |  модель: ${Config.deepSeekModel()}
+         """.trimMargin(),
+     )
+ }
+diff -ru gen1/src/main/kotlin/Motivator.kt gen2/src/main/kotlin/Motivator.kt
+--- gen1/src/main/kotlin/Motivator.kt	2026-07-23 09:12:39
++++ gen2/src/main/kotlin/Motivator.kt	2026-07-23 09:24:38
+@@ -1,36 +1,18 @@
+ /**
+- * Доменная логика: задача пользователя → короткая мотивационная фраза.
+- * Формат ответа держит промпт (1–2 предложения, без кавычек и преамбул),
+- * а `sanitize` подчищает типовые огрехи модели — контракт наружу стабилен.
++ * Доменная логика мотиватора: задача пользователя → короткая мотивационная
++ * фраза от LLM. Промпт жёстко ограничивает формат (1–2 предложения, без
++ * кавычек и преамбул), temperature повышена — фразы должны быть живыми.
+  */
+ class Motivator(private val client: DeepSeekClient) {
+ 
+-    fun motivate(task: String): MotivationResult =
+-        try {
+-            MotivationResult.Done(sanitize(client.chat(SYSTEM_PROMPT, task.trim())))
+-        } catch (e: Exception) {
+-            MotivationResult.Failed(e.message ?: e.javaClass.simpleName)
+-        }
++    private val system = """
++        Ты — краткий и энергичный мотиватор для разработчика.
++        Тебе дают описание задачи. Ответь ОДНОЙ мотивационной фразой
++        (1–2 предложения, до 200 символов) на языке задачи.
++        Фраза должна цеплять и быть привязана к сути задачи, а не быть общей банальностью.
++        Без кавычек, без преамбул, без списков, без эмодзи.
++    """.trimIndent()
+ 
+-    private fun sanitize(raw: String): String =
+-        raw.trim()
+-            .removeSurrounding("\"")
+-            .removeSurrounding("«", "»")
+-            .replace(Regex("\\s+"), " ")
+-            .take(300)
+-
+-    private companion object {
+-        val SYSTEM_PROMPT = """
+-            Ты — краткий и энергичный мотиватор. Пользователь присылает описание задачи,
+-            которую ему предстоит сделать. Ответь ОДНОЙ мотивационной фразой на русском:
+-            1–2 предложения, максимум 200 символов, по существу задачи, без общих банальностей.
+-            Без кавычек, без преамбул вида «Вот фраза:», без эмодзи-спама (максимум один эмодзи).
+-        """.trimIndent()
+-    }
+-}
+-
+-/** Результат мотивации: фраза либо причина отказа (LLM недоступна и т.п.). */
+-sealed interface MotivationResult {
+-    data class Done(val phrase: String) : MotivationResult
+-    data class Failed(val reason: String) : MotivationResult
++    fun motivate(task: String): String =
++        client.chat(system, task, temperature = 1.1).trim().removeSurrounding("\"")
+ }
