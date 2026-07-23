@@ -8,7 +8,8 @@ data class HistoryEntry(val at: String, val task: String, val phrase: String)
 
 /**
  * История последних N запросов строго в памяти (по условию дня): кольцо на
- * ArrayDeque, при переполнении вытесняется самая старая запись. Потокобезопасно —
+ * ArrayDeque, при переполнении вытесняется самая старая запись; capacity <= 0
+ * отключает историю (записи не сохраняются). Потокобезопасно —
  * HttpServer обслуживает запросы из пула потоков.
  */
 class HistoryStore(private val capacity: Int = Config.historySize()) {
@@ -17,7 +18,9 @@ class HistoryStore(private val capacity: Int = Config.historySize()) {
 
     @Synchronized
     fun add(task: String, phrase: String) {
-        if (entries.size == capacity) entries.removeFirst()
+        // capacity <= 0 — история отключена, ничего не сохраняем
+        if (capacity <= 0) return
+        if (entries.size >= capacity) entries.removeFirst()
         entries.addLast(
             HistoryEntry(
                 at = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString(),
