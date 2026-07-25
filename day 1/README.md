@@ -61,6 +61,31 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
 | `MAX_BODY_BYTES`   | `16384`         | потолок тела запроса (проверка до чтения) |
 | `HISTORY_SIZE`     | `10`            | глубина истории в памяти; `<= 0` — история отключена (`/v1/history` отдаёт пустой список) |
 
+## Тесты
+
+```bash
+./gradlew test    # 59 тестов (kotlin-test + JUnit 5), сеть не нужна
+```
+
+Что покрыто (`src/test/kotlin`):
+
+- `ConfigTest` — чистый парсер строки `.env` (`Config.parseDotEnvLine`):
+  комментарии, кавычки, пробелы, пустые значения; реальный `.env` не читается;
+- `MotivatorTest` — доменная логика на фейке `ChatClient`: что уходит в LLM
+  (системный промпт, temperature 1.1), чистка ответа (trim, схлопывание пробелов,
+  снятие обрамляющих кавычек и «ёлочек»), исключения → `MotivationResult.Failed`;
+- `HistoryStoreTest` — кольцевой буфер: вытеснение старых, порядок снимка,
+  `clear()`, `capacity <= 0`, конкурентные `add`;
+- `HttpApiTest` — интеграция: реальный `HttpServer` на случайном порту,
+  DeepSeek подменён фейковым `ChatClient` (сеть не трогается); ветви обороны
+  `/v1/motivate` (405 → 413 до чтения тела, через raw-socket → 400 → 502 → 200),
+  `/healthz`, `/v1/history` (включая DELETE), `/v1/limits`, веб-UI на `GET /`
+  (контракт стабильных id), `X-Request-Id` во всех ответах.
+
+UI-smoke поверх живого сервиса — в дне 3: Playwright-раннер
+[`day 3/smoke/run_smoke.py`](../day%203/smoke/run_smoke.py) (сервис поднять
+заранее через `./run.sh`).
+
 ## Чеклист задания
 
 - [x] `GET /healthz` — статус сервиса (status, модель, аптайм, счётчик запросов, history_count);
