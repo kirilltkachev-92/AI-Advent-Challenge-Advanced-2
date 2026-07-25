@@ -12,16 +12,10 @@ object Config {
     private val dotEnv = mutableMapOf<String, String>()
 
     fun loadDotEnv() {
-        listOf(Path.of(".env")).forEach { path ->
-            if (path.exists()) {
-                path.readLines().forEach { line ->
-                    val trimmed = line.trim()
-                    if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEach
-                    val idx = trimmed.indexOf('=')
-                    if (idx <= 0) return@forEach
-                    dotEnv.putIfAbsent(trimmed.substring(0, idx).trim(), trimmed.substring(idx + 1).trim())
-                }
-            }
+        val path = Path.of(".env")
+        if (!path.exists()) return
+        path.readLines().forEach { line ->
+            parseDotEnvLine(line)?.let { (key, value) -> dotEnv.putIfAbsent(key, value) }
         }
     }
 
@@ -47,4 +41,33 @@ object Config {
 
     /** Сколько последних записей держит история в памяти. */
     fun historySize(): Int = envValue("HISTORY_SIZE")?.toIntOrNull() ?: 10
+}
+
+/**
+ * Чистый парсер одной строки `.env` (без I/O — покрывается тестами напрямую).
+ *
+ * Контракт: `KEY=VALUE` → пара `KEY to VALUE`; пробелы вокруг ключа и значения
+ * обрезаются; парная обёртка значения в одинарные или двойные кавычки снимается
+ * (кавычки внутри значения не трогаются). Пустые строки, комментарии (`# …`)
+ * и строки без `=` или без ключа → null.
+ */
+fun parseDotEnvLine(line: String): Pair<String, String>? {
+    val trimmed = line.trim()
+    if (trimmed.isEmpty() || trimmed.startsWith("#")) return null
+    val idx = trimmed.indexOf('=')
+    if (idx <= 0) return null
+    val key = trimmed.substring(0, idx).trim()
+    val value = unquote(trimmed.substring(idx + 1).trim())
+    return key to value
+}
+
+/** Снимает обрамляющие кавычки, только если они парные ('…' или "…"). */
+private fun unquote(raw: String): String {
+    if (raw.length < 2) return raw
+    val first = raw.first()
+    return if ((first == '"' || first == '\'') && raw.last() == first) {
+        raw.substring(1, raw.length - 1)
+    } else {
+        raw
+    }
 }
