@@ -20,12 +20,16 @@ fun main() {
     val motivator = Motivator(DeepSeekClient(apiKey))
     HttpApi(motivator, HistoryStore()).start()
 
+    // HISTORY_SIZE <= 0 отключает историю (см. HistoryStore) — отражаем это в баннере
+    val historyNote =
+        if (Config.historySize() <= 0) "отключена, HISTORY_SIZE <= 0"
+        else "последние ${Config.historySize()}, в памяти"
     println(
         """
         |✓ Мотиватор запущен: http://${Config.bindHost()}:${Config.port()}
         |  здоровье:   GET  /healthz
         |  мотивация:  POST /v1/motivate   {"task": "…"}
-        |  история:    GET  /v1/history    (последние ${Config.historySize()}, в памяти)
+        |  история:    GET  /v1/history    ($historyNote)
         |  модель: ${Config.deepSeekModel()}
         """.trimMargin(),
     )
