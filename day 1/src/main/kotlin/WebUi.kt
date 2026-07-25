@@ -5,7 +5,7 @@
  * DELETE /v1/history).
  *
  * Контракт для автотестов UI — стабильные id элементов:
- * taskInput, motivateBtn, phraseBox, errorBox, historyList, clearHistoryBtn;
+ * taskInput, motivateBtn, phraseBox, copyBtn, errorBox, historyList, clearHistoryBtn;
  * записи истории — li.history-item.
  */
 object WebUi {
@@ -35,6 +35,11 @@ object WebUi {
                padding:14px 16px; min-height:52px; white-space:pre-wrap; word-break:break-word;
                margin-bottom:8px; }
   #phraseBox:empty::before { content:'Здесь появится мотивационная фраза.'; color:var(--dim); }
+  #copyBtn { background:transparent; color:var(--dim); border:1px solid var(--line);
+             border-radius:8px; padding:4px 12px; font:inherit; font-size:13px;
+             cursor:pointer; margin-bottom:8px; }
+  #copyBtn:hover { color:var(--text); border-color:var(--dim); }
+  #copyBtn:disabled { opacity:.5; cursor:default; }
   #errorBox { background:var(--err-bg); border:1px solid var(--err-line); border-radius:8px;
               padding:10px 14px; margin-bottom:8px; word-break:break-word; }
   #errorBox:empty { display:none; }
@@ -64,6 +69,7 @@ object WebUi {
 </form>
 <div id="errorBox"></div>
 <div id="phraseBox"></div>
+<button id="copyBtn" type="button" hidden>Скопировать</button>
 <div class="history-head">
   <h2>История</h2>
   <button id="clearHistoryBtn" type="button">Очистить историю</button>
@@ -75,12 +81,20 @@ object WebUi {
   var input = document.getElementById('taskInput');
   var btn = document.getElementById('motivateBtn');
   var phraseBox = document.getElementById('phraseBox');
+  var copyBtn = document.getElementById('copyBtn');
   var errorBox = document.getElementById('errorBox');
   var historyList = document.getElementById('historyList');
   var clearBtn = document.getElementById('clearHistoryBtn');
 
   function showError(text) { errorBox.textContent = text; }
   function clearError() { errorBox.textContent = ''; }
+
+  // Единая точка смены фразы: «Скопировать» видна только когда показана
+  // готовая фраза (не пустота и не промежуточное «…думаю»).
+  function setPhrase(text, copyable) {
+    phraseBox.textContent = text;
+    copyBtn.hidden = !copyable;
+  }
 
   // Ошибки API (400/413/502/…) показываем текстом из error.message.
   function apiMessage(status, json) {
@@ -133,6 +147,26 @@ object WebUi {
       .catch(function (err) { showError('Сеть: ' + err); });
   }
 
+  // Копирование фразы в буфер обмена. Clipboard API доступен на localhost
+  // (secure context); если браузер его не даёт — честная ошибка в #errorBox.
+  copyBtn.addEventListener('click', function () {
+    clearError();
+    if (!navigator.clipboard) {
+      showError('Буфер обмена недоступен в этом браузере.');
+      return;
+    }
+    navigator.clipboard.writeText(phraseBox.textContent)
+      .then(function () {
+        copyBtn.textContent = 'Скопировано';
+        copyBtn.disabled = true;
+        setTimeout(function () {
+          copyBtn.textContent = 'Скопировать';
+          copyBtn.disabled = false;
+        }, 1200);
+      })
+      .catch(function (err) { showError('Не удалось скопировать: ' + err); });
+  });
+
   // Очистка истории — без confirm(): действие обратимо по смыслу (история и так
   // кольцевая в памяти), ошибки показываем в #errorBox как и остальные.
   clearBtn.addEventListener('click', function () {
@@ -155,14 +189,14 @@ object WebUi {
     // что и у API (без запроса на сервер). Форма с novalidate, чтобы нативный
     // тултип required не перехватывал пустой submit мимо errorBox.
     if (!task) {
-      phraseBox.textContent = '';
+      setPhrase('', false);
       showError('Поле задачи пустое — опишите, что нужно сделать.');
       input.focus();
       return;
     }
     clearError();
     btn.disabled = true;
-    phraseBox.textContent = '…думаю';
+    setPhrase('…думаю', false);
 
     fetch('/v1/motivate', {
       method: 'POST',
@@ -171,15 +205,15 @@ object WebUi {
     }).then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
       .then(function (res) {
         if (res.s !== 200) {
-          phraseBox.textContent = '';
+          setPhrase('', false);
           showError(apiMessage(res.s, res.j));
           return;
         }
-        phraseBox.textContent = res.j.phrase;
+        setPhrase(res.j.phrase, true);
         input.value = '';
         loadHistory();
       })
-      .catch(function (err) { phraseBox.textContent = ''; showError('Сеть: ' + err); })
+      .catch(function (err) { setPhrase('', false); showError('Сеть: ' + err); })
       .finally(function () { btn.disabled = false; input.focus(); });
   });
 

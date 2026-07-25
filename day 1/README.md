@@ -33,8 +33,10 @@
   (405 → 413 до чтения тела → 400 → 502), access-лог, ошибки `{"error":{code,message}}`;
 - `WebUi.kt` — одностраничный веб-UI (GET `/`): самодостаточный HTML с инлайн CSS/JS,
   тёмная тема, без внешних ресурсов; fetch к `POST /v1/motivate` и `GET /v1/history`,
-  ошибки API показываются текстом из `error.message`; стабильные id для автотестов —
-  `taskInput`, `motivateBtn`, `phraseBox`, `errorBox`, `historyList` (записи — `li.history-item`);
+  ошибки API показываются текстом из `error.message`; кнопка «Скопировать» (`#copyBtn`)
+  копирует фразу в буфер обмена и видна только при показанной фразе; стабильные id
+  для автотестов — `taskInput`, `motivateBtn`, `phraseBox`, `copyBtn`, `errorBox`,
+  `historyList`, `clearHistoryBtn` (записи — `li.history-item`);
 - `Main.kt` — только wiring.
 
 ## Запуск
@@ -67,4 +69,7 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
       история с автообновлением (`WebUi.kt`); не-GET → 405, неизвестный путь → 404 JSON;
 - [x] очистка истории — `DELETE /v1/history` → 200 `{"cleared": true}`
       (`HistoryStore.clear()`), в UI кнопка «Очистить историю» (`#clearHistoryBtn`)
-      без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`.
+      без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`;
+- [x] кнопка «Скопировать» (`#copyBtn`) рядом с фразой — копирует фразу в буфер
+      обмена через Clipboard API, появляется только когда фраза показана,
+      ошибки — в `#errorBox`; id проверяется контрактным тестом в `HttpApiTest`.

@@ -89,7 +89,7 @@ class HttpApiTest {
         val page = response.body()
         assertTrue(page.contains("<!doctype html"), "страница — самодостаточный HTML")
         // Стабильные id — контракт для автотестов UI
-        listOf("taskInput", "motivateBtn", "phraseBox", "errorBox", "historyList", "clearHistoryBtn").forEach { id ->
+        listOf("taskInput", "motivateBtn", "phraseBox", "copyBtn", "errorBox", "historyList", "clearHistoryBtn").forEach { id ->
             assertTrue(page.contains("id=\"$id\""), "на странице есть элемент #$id")
         }
     }
