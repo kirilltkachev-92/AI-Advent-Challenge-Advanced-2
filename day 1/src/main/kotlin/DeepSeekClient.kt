@@ -36,7 +36,7 @@ class DeepSeekClient(
             .uri(URI.create("${Config.DEEPSEEK_API_BASE}/chat/completions"))
             .header("Content-Type", "application/json")
             .header("Authorization", "Bearer $apiKey")
-            .timeout(Duration.ofSeconds(60))
+            .timeout(Duration.ofSeconds(Config.deepSeekTimeoutSec()))
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
             .build()
         val response = http.send(request, HttpResponse.BodyHandlers.ofString())
