@@ -4,8 +4,9 @@ import kotlin.test.assertTrue
 
 /**
  * Motivator: доменная логика поверх ChatClient-фейка — что уходит в LLM
- * (системный промпт, задача, повышенная temperature) и как чистится ответ
- * (trim + снятие обрамляющих кавычек).
+ * (системный промпт, задача, повышенная temperature), как чистится ответ
+ * (trim + снятие обрамляющих кавычек) и как транспортные исключения
+ * превращаются в MotivationResult.Failed вместо проброса наружу.
  */
 class MotivatorTest {
 
@@ -43,10 +44,10 @@ class MotivatorTest {
     }
 
     @Test
-    fun `ответ возвращается как есть, если он уже чистый`() {
+    fun `ответ возвращается как Done, если он уже чистый`() {
         val client = RecordingClient("Каждый тест — шаг к надёжному релизу.")
         assertEquals(
-            "Каждый тест — шаг к надёжному релизу.",
+            MotivationResult.Done("Каждый тест — шаг к надёжному релизу."),
             Motivator(client).motivate("покрыть сервис тестами"),
         )
     }
@@ -54,18 +55,38 @@ class MotivatorTest {
     @Test
     fun `обрезает пробелы и переводы строк вокруг ответа`() {
         val client = RecordingClient("\n  Вперёд к цели!  \n")
-        assertEquals("Вперёд к цели!", Motivator(client).motivate("задача"))
+        assertEquals(MotivationResult.Done("Вперёд к цели!"), Motivator(client).motivate("задача"))
     }
 
     @Test
     fun `снимает обрамляющие кавычки после trim`() {
         val client = RecordingClient(" \"Ты справишься с этим багом!\" ")
-        assertEquals("Ты справишься с этим багом!", Motivator(client).motivate("задача"))
+        assertEquals(MotivationResult.Done("Ты справишься с этим багом!"), Motivator(client).motivate("задача"))
     }
 
     @Test
     fun `кавычки внутри фразы не трогает`() {
         val client = RecordingClient("Скажи багу \"прощай\" сегодня")
-        assertEquals("Скажи багу \"прощай\" сегодня", Motivator(client).motivate("задача"))
+        assertEquals(MotivationResult.Done("Скажи багу \"прощай\" сегодня"), Motivator(client).motivate("задача"))
+    }
+
+    // ── транспортные ошибки → Failed, не исключение ──
+
+    @Test
+    fun `падение клиента превращается в Failed с его сообщением`() {
+        val client = ChatClient { _, _, _ -> error("DeepSeek → HTTP 500: boom") }
+        assertEquals(
+            MotivationResult.Failed("DeepSeek → HTTP 500: boom"),
+            Motivator(client).motivate("задача"),
+        )
+    }
+
+    @Test
+    fun `падение клиента без сообщения даёт дефолтную причину`() {
+        val client = ChatClient { _, _, _ -> throw RuntimeException() }
+        assertEquals(
+            MotivationResult.Failed("DeepSeek недоступен"),
+            Motivator(client).motivate("задача"),
+        )
     }
 }

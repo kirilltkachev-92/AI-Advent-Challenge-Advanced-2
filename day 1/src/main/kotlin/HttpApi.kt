@@ -108,10 +108,9 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
                 return send(ex, 400, error("bad_request", "task длиннее ${Config.maxTaskChars()} символов"))
         }
 
-        val phrase = try {
-            motivator.motivate(task!!)
-        } catch (e: Exception) {
-            return send(ex, 502, error("upstream_error", e.message ?: "DeepSeek недоступен"))
+        val phrase = when (val result = motivator.motivate(task!!)) {
+            is MotivationResult.Failed -> return send(ex, 502, error("upstream_error", result.reason))
+            is MotivationResult.Done -> result.phrase
         }
         history.add(task, phrase)
         served.incrementAndGet()
