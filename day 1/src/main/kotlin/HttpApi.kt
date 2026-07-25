@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicLong
  * POST /v1/motivate — {"task": "…"} → {"task", "phrase", "model"}
  * GET  /v1/history  — последние 10 запросов и ответов (в памяти, свежие первыми)
  * DELETE /v1/history — очистить историю → {"cleared": true}
+ * GET  /v1/limits   — действующие лимиты сервиса:
+ *                     {"max_task_chars", "max_body_bytes", "history_size", "model"}
  *
  * Порядок обороны на /v1/motivate: 405 (метод) → 413 (Content-Length больше
  * потолка — ДО чтения тела) → 400 (парсинг/валидация) → 502 (ошибка DeepSeek).
@@ -59,6 +61,17 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         }
         server.createContext("/v1/motivate") { ex ->
             handle(ex) { handleMotivate(ex) }
+        }
+        server.createContext("/v1/limits") { ex ->
+            handle(ex) {
+                if (ex.requestMethod != "GET") return@handle send(ex, 405, error("method_not_allowed", "Только GET"))
+                send(ex, 200, buildJsonObject {
+                    put("max_task_chars", Config.maxTaskChars())
+                    put("max_body_bytes", Config.maxBodyBytes())
+                    put("history_size", Config.historySize())
+                    put("model", Config.deepSeekModel())
+                })
+            }
         }
         server.createContext("/v1/history") { ex ->
             handle(ex) {

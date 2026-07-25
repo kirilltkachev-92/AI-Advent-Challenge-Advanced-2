@@ -17,6 +17,7 @@
 клиент ──GET /v1/history──▶ HttpApi ──▶ HistoryStore.snapshot() (свежие первыми)
 клиент ──DELETE /v1/history▶ HttpApi ──▶ HistoryStore.clear() → {"cleared": true}
 клиент ──GET /healthz────▶ HttpApi (статус, модель, аптайм, счётчик)
+клиент ──GET /v1/limits──▶ HttpApi (max_task_chars, max_body_bytes, history_size, model)
 браузер ──GET /──────────▶ HttpApi ──▶ WebUi.PAGE (одностраничный UI, text/html)
 ```
 
