@@ -30,6 +30,10 @@ class HistoryStore(private val capacity: Int = Config.historySize()) {
         )
     }
 
+    /** Текущее число записей — для /healthz, без копирования списка. */
+    @Synchronized
+    fun count(): Int = entries.size
+
     /** Снимок истории: свежие записи первыми. */
     @Synchronized
     fun snapshot(): List<HistoryEntry> = entries.reversed()

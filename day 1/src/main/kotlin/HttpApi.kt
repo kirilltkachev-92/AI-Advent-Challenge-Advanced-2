@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong
  * HTTP-слой сервиса — com.sun.net.httpserver из JDK, без фреймворков.
  *
  * GET  /            — одностраничный веб-UI (WebUi.PAGE, text/html)
- * GET  /healthz     — статус сервиса (модель, аптайм, счётчик запросов)
+ * GET  /healthz     — статус сервиса (модель, аптайм, счётчик запросов, размер истории)
  * POST /v1/motivate — {"task": "…"} → {"task", "phrase", "model"}
  * GET  /v1/history  — последние 10 запросов и ответов (в памяти, свежие первыми)
  * DELETE /v1/history — очистить историю → {"cleared": true}
@@ -55,6 +55,7 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
                     put("model", Config.deepSeekModel())
                     put("uptime_sec", (System.currentTimeMillis() - startedAt) / 1000)
                     put("requests_served", served.get())
+                    put("history_count", history.count())
                 })
             }
         }

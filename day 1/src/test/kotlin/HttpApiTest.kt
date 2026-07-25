@@ -182,6 +182,24 @@ class HttpApiTest {
         val body = json.parseToJsonElement(response.body()).jsonObject
         assertEquals("ok", body.getValue("status").jsonPrimitive.content)
         assertEquals(1, body.getValue("requests_served").jsonPrimitive.int)
+        assertEquals(1, body.getValue("history_count").jsonPrimitive.int)
+    }
+
+    @Test
+    fun `healthz history_count растёт с историей и обнуляется после очистки`() {
+        fun historyCount(): Int =
+            json.parseToJsonElement(get("/healthz").body()).jsonObject
+                .getValue("history_count").jsonPrimitive.int
+
+        assertEquals(0, historyCount())
+
+        motivate("первая задача")
+        motivate("boom") // 502 — историю не пополняет
+        motivate("вторая задача")
+        assertEquals(2, historyCount())
+
+        delete("/v1/history")
+        assertEquals(0, historyCount())
     }
 
     @Test
