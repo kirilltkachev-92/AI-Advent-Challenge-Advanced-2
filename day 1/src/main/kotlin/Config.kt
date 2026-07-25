@@ -31,6 +31,9 @@ object Config {
     fun deepSeekApiKey(): String? = envValue("DEEPSEEK_API_KEY")
     fun deepSeekModel(): String = envValue("DEEPSEEK_MODEL") ?: "deepseek-v4-flash"
 
+    /** Таймаут запроса к DeepSeek в секундах (request timeout, не connect). */
+    fun deepSeekTimeoutSec(): Long = envValue("DEEPSEEK_TIMEOUT_SEC")?.toLongOrNull() ?: 60L
+
     fun bindHost(): String = envValue("BIND_HOST") ?: "127.0.0.1"
 
     // По условию дня сервис живёт на 8080 (осознанное отступление от конвенции 8000+N).

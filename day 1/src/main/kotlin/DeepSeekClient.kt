@@ -19,6 +19,7 @@ import java.time.Duration
 class DeepSeekClient(
     private val apiKey: String,
     private val model: String = Config.deepSeekModel(),
+    private val requestTimeout: Duration = Duration.ofSeconds(Config.deepSeekTimeoutSec()),
 ) : ChatClient {
     private val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
     private val json = Json { ignoreUnknownKeys = true }
@@ -36,7 +37,7 @@ class DeepSeekClient(
             .uri(URI.create("${Config.DEEPSEEK_API_BASE}/chat/completions"))
             .header("Content-Type", "application/json")
             .header("Authorization", "Bearer $apiKey")
-            .timeout(Duration.ofSeconds(60))
+            .timeout(requestTimeout)
             .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
             .build()
         val response = http.send(request, HttpResponse.BodyHandlers.ofString())
