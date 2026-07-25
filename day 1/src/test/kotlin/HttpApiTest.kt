@@ -7,6 +7,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.io.InputStream
+import java.net.Socket
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -79,6 +81,22 @@ class HttpApiTest {
     private fun requestId(response: HttpResponse<String>): String? =
         response.headers().firstValue("X-Request-Id").orElse(null)
 
+    /** Читает HTTP/1.1-ответ из raw-socket: статус-код + тело ровно по Content-Length. */
+    private fun readHttpResponse(input: InputStream): Pair<Int, String> {
+        val header = StringBuilder()
+        while (!header.endsWith("\r\n\r\n")) {
+            val byte = input.read()
+            check(byte != -1) { "соединение закрыто до конца заголовков ответа: $header" }
+            header.append(byte.toChar())
+        }
+        val lines = header.toString().split("\r\n")
+        val statusCode = lines.first().split(" ")[1].toInt()
+        val contentLength = lines.firstOrNull { it.startsWith("Content-Length", ignoreCase = true) }
+            ?.substringAfter(':')?.trim()?.toInt() ?: 0
+        val body = input.readNBytes(contentLength).toString(Charsets.UTF_8)
+        return statusCode to body
+    }
+
     // ── X-Request-Id: заголовок во всех ответах, включая ошибки ──
 
     @Test
@@ -148,6 +166,37 @@ class HttpApiTest {
         val response = post("/v1/motivate", huge.toString())
         assertEquals(413, response.statusCode())
         assertEquals("payload_too_large", errorCode(response.body()))
+    }
+
+    @Test
+    fun `motivate с заявленным Content-Length больше потолка отклоняется 413 без чтения тела`() {
+        // Через raw-socket: объявляем огромный Content-Length, но тело НЕ отправляем.
+        // Сервер обязан ответить 413 по одному заголовку; попытка читать тело
+        // зависла бы на socket-read и уронила тест по soTimeout.
+        val declared = Config.maxBodyBytes() + 1024
+        Socket("127.0.0.1", server.address.port).use { socket ->
+            socket.soTimeout = 5_000 // страховка: зависший read падает по таймауту, а не навсегда
+            val started = System.nanoTime()
+            socket.getOutputStream().apply {
+                write(
+                    (
+                        "POST /v1/motivate HTTP/1.1\r\n" +
+                            "Host: 127.0.0.1\r\n" +
+                            "Content-Type: application/json\r\n" +
+                            "Content-Length: $declared\r\n" +
+                            "\r\n"
+                        ).toByteArray(Charsets.UTF_8),
+                )
+                flush()
+            }
+
+            val (statusCode, body) = readHttpResponse(socket.getInputStream())
+            val elapsedMs = (System.nanoTime() - started) / 1_000_000
+
+            assertEquals(413, statusCode)
+            assertEquals("payload_too_large", errorCode(body))
+            assertTrue(elapsedMs < 2_000, "413 должен прийти сразу, без ожидания тела; заняло $elapsedMs мс")
+        }
     }
 
     @Test
@@ -257,7 +306,9 @@ class HttpApiTest {
 
     @Test
     fun `healthz POST отклоняется 405`() {
-        assertEquals(405, post("/healthz", "{}").statusCode())
+        val response = post("/healthz", "{}")
+        assertEquals(405, response.statusCode())
+        assertEquals("method_not_allowed", errorCode(response.body()))
     }
 
     @Test
