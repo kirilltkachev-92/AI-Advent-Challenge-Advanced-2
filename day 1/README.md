@@ -31,6 +31,8 @@
   «Очистить историю» (`#clearHistoryBtn`) рядом с заголовком истории;
 - `HttpApi.kt` — транспорт на `com.sun.net.httpserver`: маршруты, оборона
   (405 → 413 до чтения тела → 400 → 502), access-лог, ошибки `{"error":{code,message}}`;
+  каждому запросу назначается `X-Request-Id` (8 hex-символов) — заголовок во всех
+  ответах, включая ошибки, и та же метка в начале строки access-лога;
 - `WebUi.kt` — одностраничный веб-UI (GET `/`): самодостаточный HTML с инлайн CSS/JS,
   тёмная тема, без внешних ресурсов; fetch к `POST /v1/motivate` и `GET /v1/history`,
   ошибки API показываются текстом из `error.message`; кнопка «Скопировать» (`#copyBtn`)
@@ -73,4 +75,7 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
       без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`;
 - [x] `GET /v1/limits` — действующие лимиты сервиса: 200
       `{"max_task_chars", "max_body_bytes", "history_size", "model"}` (значения из
-      `Config`); не-GET → 405 в обычном формате ошибок; покрыто `HttpApiTest`.
+      `Config`); не-GET → 405 в обычном формате ошибок; покрыто `HttpApiTest`;
+- [x] `X-Request-Id` — короткий id на каждый запрос: заголовок во всех ответах
+      (включая 4xx/5xx) и метка `[id]` в access-логе; покрыто `HttpApiTest`
+      (наличие и формат во всех ветвях, уникальность между запросами).

@@ -76,6 +76,37 @@ class HttpApiTest {
         json.parseToJsonElement(body).jsonObject
             .getValue("error").jsonObject.getValue("code").jsonPrimitive.content
 
+    private fun requestId(response: HttpResponse<String>): String =
+        response.headers().firstValue("X-Request-Id").orElse("")
+
+    // ── X-Request-Id: во всех ответах, включая ошибки ──
+
+    @Test
+    fun `каждый ответ несёт короткий X-Request-Id`() {
+        // Успех, 404, 405, 400, 502, healthz — заголовок есть везде и это 8 hex-символов
+        val responses = listOf(
+            motivate("задача"),          // 200
+            get("/nope"),                 // 404
+            get("/v1/motivate"),          // 405
+            post("/v1/motivate", "не json"), // 400
+            motivate("boom"),             // 502
+            get("/healthz"),              // 200
+        )
+        responses.forEach { response ->
+            val id = requestId(response)
+            assertTrue(
+                id.matches(Regex("[0-9a-f]{8}")),
+                "ответ ${response.statusCode()} должен нести X-Request-Id из 8 hex-символов, получено: «$id»",
+            )
+        }
+    }
+
+    @Test
+    fun `X-Request-Id уникален для каждого запроса`() {
+        val ids = (1..10).map { requestId(get("/healthz")) }
+        assertEquals(ids.size, ids.toSet().size, "id не должны повторяться: $ids")
+    }
+
     // ── GET / — веб-UI и 404 на неизвестные пути ──
 
     @Test

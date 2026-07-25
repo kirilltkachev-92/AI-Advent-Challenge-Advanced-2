@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.net.InetSocketAddress
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
@@ -26,6 +27,10 @@ import java.util.concurrent.atomic.AtomicLong
  * Порядок обороны на /v1/motivate: 405 (метод) → 413 (Content-Length больше
  * потолка — ДО чтения тела) → 400 (парсинг/валидация) → 502 (ошибка DeepSeek).
  * Формат ошибок: {"error": {"code": "…", "message": "…"}}.
+ *
+ * Каждому запросу назначается короткий X-Request-Id (8 hex-символов):
+ * он выставляется в заголовок ВСЕХ ответов (включая ошибки и 500 из handle)
+ * и пишется в access-лог — по нему можно связать строку лога с ответом клиенту.
  */
 class HttpApi(private val motivator: Motivator, private val history: HistoryStore) {
 
@@ -136,9 +141,15 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         putJsonObject("error") { put("code", code); put("message", message) }
     }
 
-    /** Общая обёртка: access-лог одной строкой + любая ошибка становится JSON 500. */
+    /**
+     * Общая обёртка: назначает запросу X-Request-Id, пишет access-лог одной
+     * строкой + любая ошибка становится JSON 500. Заголовок выставляется ДО
+     * выполнения block, поэтому попадает во все ответы, включая ошибки.
+     */
     private fun handle(ex: HttpExchange, block: () -> Unit) {
         val start = System.nanoTime()
+        val requestId = newRequestId()
+        ex.responseHeaders.set("X-Request-Id", requestId)
         var status = -1
         try {
             block()
@@ -149,13 +160,16 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         } finally {
             val ms = (System.nanoTime() - start) / 1_000_000
             println(
-                "%s %s %s ← %s за %d мс".format(
-                    ex.requestMethod, ex.requestURI.path, status, ex.remoteAddress.address.hostAddress, ms,
+                "[%s] %s %s %s ← %s за %d мс".format(
+                    requestId, ex.requestMethod, ex.requestURI.path, status, ex.remoteAddress.address.hostAddress, ms,
                 ),
             )
             ex.close()
         }
     }
+
+    /** Короткий id запроса: 8 hex-символов от случайного UUID — хватает, чтобы найти строку в логе. */
+    private fun newRequestId(): String = UUID.randomUUID().toString().take(8)
 
     private fun send(ex: HttpExchange, status: Int, body: JsonObject) = sendRaw(ex, status, body.toString())
 
