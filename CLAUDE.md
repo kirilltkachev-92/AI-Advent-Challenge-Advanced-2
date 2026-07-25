@@ -12,6 +12,9 @@
   `com.sun.net.httpserver.HttpServer` (JDK). **Никаких** ktor/okhttp/retrofit/spring.
 - LLM — DeepSeek (OpenAI-совместимый `/chat/completions`), протокол пишем руками,
   без SDK. Ключ — `DEEPSEEK_API_KEY` из env/`.env`.
+  Актуальные модели API: `deepseek-v4-flash` (дефолт) и `deepseek-v4-pro`;
+  старый `deepseek-chat` API больше не принимает (найдено loop run 1, issue #17) —
+  не хардкодить его в новых днях.
 
 ## Архитектура
 

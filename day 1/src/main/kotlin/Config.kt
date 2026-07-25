@@ -29,7 +29,7 @@ object Config {
         System.getenv(key)?.takeIf { it.isNotBlank() } ?: dotEnv[key]?.takeIf { it.isNotBlank() }
 
     fun deepSeekApiKey(): String? = envValue("DEEPSEEK_API_KEY")
-    fun deepSeekModel(): String = envValue("DEEPSEEK_MODEL") ?: "deepseek-chat"
+    fun deepSeekModel(): String = envValue("DEEPSEEK_MODEL") ?: "deepseek-v4-flash"
 
     fun bindHost(): String = envValue("BIND_HOST") ?: "127.0.0.1"
 

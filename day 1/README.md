@@ -47,7 +47,7 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
 | Переменная         | Дефолт          | Зачем                                   |
 |--------------------|-----------------|-----------------------------------------|
 | `DEEPSEEK_API_KEY` | — (обязателен)  | ключ DeepSeek                           |
-| `DEEPSEEK_MODEL`   | `deepseek-chat` | модель генерации                        |
+| `DEEPSEEK_MODEL`   | `deepseek-v4-flash` | модель генерации                        |
 | `PORT`             | `8080`          | порт HTTP-сервиса                       |
 | `BIND_HOST`        | `127.0.0.1`     | адрес бинда                             |
 | `MAX_TASK_CHARS`   | `2000`          | потолок длины поля `task`               |
