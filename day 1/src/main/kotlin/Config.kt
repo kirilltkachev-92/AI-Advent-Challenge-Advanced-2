@@ -15,13 +15,36 @@ object Config {
         listOf(Path.of(".env")).forEach { path ->
             if (path.exists()) {
                 path.readLines().forEach { line ->
-                    val trimmed = line.trim()
-                    if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEach
-                    val idx = trimmed.indexOf('=')
-                    if (idx <= 0) return@forEach
-                    dotEnv.putIfAbsent(trimmed.substring(0, idx).trim(), trimmed.substring(idx + 1).trim())
+                    parseDotEnvLine(line)?.let { (key, value) -> dotEnv.putIfAbsent(key, value) }
                 }
             }
+        }
+    }
+
+    /**
+     * Чистый парсер одной строки `.env`: `KEY=value` → пара, иначе null.
+     * Игнорирует пустые строки, комментарии (`# …`) и строки без `=`/с пустым ключом;
+     * обрезает пробелы вокруг ключа и значения; снимает парные одинарные/двойные
+     * кавычки вокруг значения (`KEY="a b"` → `a b`).
+     */
+    fun parseDotEnvLine(line: String): Pair<String, String>? {
+        val trimmed = line.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) return null
+        val idx = trimmed.indexOf('=')
+        if (idx <= 0) return null
+        val key = trimmed.substring(0, idx).trim()
+        if (key.isEmpty()) return null
+        return key to unquote(trimmed.substring(idx + 1).trim())
+    }
+
+    /** Снимает одну пару обрамляющих кавычек ('…' или "…"), если они парные. */
+    private fun unquote(value: String): String {
+        if (value.length < 2) return value
+        val first = value.first()
+        return if ((first == '"' || first == '\'') && value.last() == first) {
+            value.substring(1, value.length - 1)
+        } else {
+            value
         }
     }
 
