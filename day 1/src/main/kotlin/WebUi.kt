@@ -88,6 +88,15 @@ object WebUi {
     return 'HTTP ' + status;
   }
 
+  // ISO-строка «2026-07-23T10:45:44+03:00» → «ЧЧ:ММ:СС» в поясе браузера;
+  // нераспознанное значение показываем как есть, чтобы не потерять информацию.
+  function formatTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
   function renderHistory(entries) {
     historyList.textContent = '';
     if (!entries || entries.length === 0) {
@@ -108,7 +117,7 @@ object WebUi {
       phrase.textContent = e.phrase;
       var time = document.createElement('div');
       time.className = 'time';
-      time.textContent = e.at;
+      time.textContent = formatTime(e.at);
       li.appendChild(task); li.appendChild(phrase); li.appendChild(time);
       historyList.appendChild(li);
     });
