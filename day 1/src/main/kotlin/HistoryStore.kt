@@ -34,6 +34,10 @@ class HistoryStore(private val capacity: Int = Config.historySize()) {
     @Synchronized
     fun snapshot(): List<HistoryEntry> = entries.reversed()
 
+    /** Текущее число записей (для /healthz), без копирования списка. */
+    @Synchronized
+    fun size(): Int = entries.size
+
     /** Полная очистка истории (DELETE /v1/history). */
     @Synchronized
     fun clear() {
