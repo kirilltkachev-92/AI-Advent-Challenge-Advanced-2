@@ -1,5 +1,6 @@
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -64,10 +65,7 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
                 when (ex.requestMethod) {
                     "GET" -> {
                         val entries = history.snapshot()
-                        sendRaw(ex, 200, buildString {
-                            append("{\"count\":").append(entries.size)
-                            append(",\"entries\":").append(json.encodeToString(entries)).append("}")
-                        })
+                        sendRaw(ex, 200, json.encodeToString(HistoryResponse(count = entries.size, entries = entries)))
                     }
                     "DELETE" -> {
                         history.clear()
@@ -162,3 +160,7 @@ class HttpApi(private val motivator: Motivator, private val history: HistoryStor
         ex.responseBody.write(bytes)
     }
 }
+
+/** Ответ GET /v1/history: порядок полей в декларации = порядок в JSON ({"count":N,"entries":[...]}). */
+@Serializable
+data class HistoryResponse(val count: Int, val entries: List<HistoryEntry>)
