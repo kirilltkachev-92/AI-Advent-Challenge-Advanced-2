@@ -88,6 +88,14 @@ object WebUi {
     return 'HTTP ' + status;
   }
 
+  // Время записи: ISO-строка сервера («2026-07-23T10:45:44+03:00») → локальное
+  // ЧЧ:ММ:СС. Нераспарсиваемое значение показываем как есть, чтобы не терять данные.
+  function formatTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
   function renderHistory(entries) {
     historyList.textContent = '';
     if (!entries || entries.length === 0) {
@@ -108,7 +116,7 @@ object WebUi {
       phrase.textContent = e.phrase;
       var time = document.createElement('div');
       time.className = 'time';
-      time.textContent = e.at;
+      time.textContent = formatTime(e.at);
       li.appendChild(task); li.appendChild(phrase); li.appendChild(time);
       historyList.appendChild(li);
     });
