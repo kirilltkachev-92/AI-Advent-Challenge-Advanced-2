@@ -6,8 +6,9 @@ import kotlin.test.assertTrue
 /**
  * Motivator: доменная логика поверх ChatClient-фейка — что уходит в LLM
  * (системный промпт, задача, повышенная temperature), как чистится ответ
- * (trim + снятие обрамляющих кавычек) и как исключения транспорта
- * превращаются в MotivationResult.Failed.
+ * (схлопывание пробелов/переводов строк, trim, снятие обрамляющих кавычек —
+ * прямых и «ёлочек») и как исключения транспорта превращаются
+ * в MotivationResult.Failed.
  */
 class MotivatorTest {
 
@@ -67,6 +68,33 @@ class MotivatorTest {
     fun `снимает обрамляющие кавычки после trim`() {
         val client = RecordingClient(" \"Ты справишься с этим багом!\" ")
         assertEquals("Ты справишься с этим багом!", phraseOf(Motivator(client).motivate("задача")))
+    }
+
+    @Test
+    fun `снимает обрамляющие ёлочки`() {
+        val client = RecordingClient("«Каждый коммит приближает релиз!»")
+        assertEquals("Каждый коммит приближает релиз!", phraseOf(Motivator(client).motivate("задача")))
+    }
+
+    @Test
+    fun `снимает ёлочки после trim`() {
+        val client = RecordingClient("  «Дожми этот модуль!»\n")
+        assertEquals("Дожми этот модуль!", phraseOf(Motivator(client).motivate("задача")))
+    }
+
+    @Test
+    fun `схлопывает множественные пробелы и переводы строк в один пробел`() {
+        val client = RecordingClient("Первый шаг\n\nсделан —   остальное\tдожмёшь!")
+        assertEquals(
+            "Первый шаг сделан — остальное дожмёшь!",
+            phraseOf(Motivator(client).motivate("задача")),
+        )
+    }
+
+    @Test
+    fun `ёлочки внутри фразы не трогает`() {
+        val client = RecordingClient("Скажи «готово» уже сегодня")
+        assertEquals("Скажи «готово» уже сегодня", phraseOf(Motivator(client).motivate("задача")))
     }
 
     @Test
