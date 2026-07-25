@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import java.net.Socket
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -21,7 +22,8 @@ import kotlin.test.assertTrue
  * Интеграционный тест HTTP-слоя: реальный HttpServer на случайном свободном
  * порту (порт 0), DeepSeek подменён фейковым ChatClient — сеть не трогаем.
  * Проверяются ветви обороны /v1/motivate (405 → 413 → 400 → 502 → 200)
- * и вспомогательные endpoint'ы /healthz и /v1/history.
+ * и вспомогательные endpoint'ы /healthz и /v1/history. Кейс «413 без чтения
+ * тела» идёт raw-сокетом: HttpClient не позволяет подделать Content-Length.
  */
 class HttpApiTest {
 
@@ -156,6 +158,46 @@ class HttpApiTest {
         assertEquals("payload_too_large", errorCode(response.body()))
     }
 
+    /**
+     * 413 по заголовку Content-Length должен отдаваться ДО чтения тела.
+     * java.net.http.HttpClient не даёт подделать Content-Length (restricted header),
+     * поэтому шлём запрос raw-сокетом: заголовок объявляет огромное тело, а байты
+     * тела не отправляем вовсе. Если бы сервер читал тело — он бы завис в ожидании;
+     * быстрый ответ доказывает, что оборона сработала до readNBytes.
+     */
+    @Test
+    fun `motivate с Content-Length больше потолка отклоняется 413 не читая тело`() {
+        val declared = Config.maxBodyBytes() + 1000
+        Socket("127.0.0.1", server.address.port).use { socket ->
+            socket.soTimeout = 5_000 // страховка: тест не должен висеть, если сервер ждёт тело
+            socket.getOutputStream().apply {
+                write(
+                    (
+                        "POST /v1/motivate HTTP/1.1\r\n" +
+                            "Host: 127.0.0.1\r\n" +
+                            "Content-Type: application/json\r\n" +
+                            "Content-Length: $declared\r\n" +
+                            "\r\n"
+                        ).toByteArray(Charsets.US_ASCII),
+                )
+                flush()
+            }
+
+            val started = System.nanoTime()
+            val statusLine = socket.getInputStream().bufferedReader(Charsets.ISO_8859_1).readLine()
+            val elapsedMs = (System.nanoTime() - started) / 1_000_000
+
+            assertTrue(
+                statusLine != null && statusLine.contains(" 413"),
+                "ожидали статус 413 в первой строке ответа, получено: «$statusLine»",
+            )
+            assertTrue(
+                elapsedMs < 2_000,
+                "413 должен приходить сразу, без чтения тела; ответ занял $elapsedMs мс",
+            )
+        }
+    }
+
     @Test
     fun `motivate с не-JSON телом отклоняется 400`() {
         val response = post("/v1/motivate", "это не json")
@@ -235,7 +277,9 @@ class HttpApiTest {
 
     @Test
     fun `healthz POST отклоняется 405`() {
-        assertEquals(405, post("/healthz", "{}").statusCode())
+        val response = post("/healthz", "{}")
+        assertEquals(405, response.statusCode())
+        assertEquals("method_not_allowed", errorCode(response.body()))
     }
 
     @Test
