@@ -25,8 +25,24 @@ class Motivator(private val client: ChatClient) {
 
     fun motivate(task: String): MotivationResult =
         try {
-            MotivationResult.Done(client.chat(system, task, temperature = 1.1).trim().removeSurrounding("\""))
+            MotivationResult.Done(sanitize(client.chat(system, task, temperature = 1.1)))
         } catch (e: Exception) {
             MotivationResult.Failed(e.message ?: "DeepSeek недоступен")
         }
+
+    /**
+     * Чистка сырого ответа LLM: множественные пробелы/переводы строк
+     * схлопываются в один пробел, затем снимаются обрамляющие кавычки —
+     * двойные ("…") и «ёлочки». Кавычки внутри фразы не трогаются.
+     */
+    private fun sanitize(raw: String): String =
+        raw.replace(whitespaceRun, " ")
+            .trim()
+            .removeSurrounding("\"")
+            .removeSurrounding("«", "»")
+            .trim()
+
+    private companion object {
+        val whitespaceRun = Regex("\\s+")
+    }
 }

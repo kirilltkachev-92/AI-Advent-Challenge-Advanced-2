@@ -5,8 +5,9 @@ import kotlin.test.assertTrue
 /**
  * Motivator: доменная логика поверх ChatClient-фейка — что уходит в LLM
  * (системный промпт, задача, повышенная temperature), как чистится ответ
- * (trim + снятие обрамляющих кавычек) и как транспортные исключения
- * превращаются в MotivationResult.Failed вместо проброса наружу.
+ * (схлопывание whitespace + снятие обрамляющих кавычек "…" и «…»)
+ * и как транспортные исключения превращаются в MotivationResult.Failed
+ * вместо проброса наружу.
  */
 class MotivatorTest {
 
@@ -68,6 +69,30 @@ class MotivatorTest {
     fun `кавычки внутри фразы не трогает`() {
         val client = RecordingClient("Скажи багу \"прощай\" сегодня")
         assertEquals(MotivationResult.Done("Скажи багу \"прощай\" сегодня"), Motivator(client).motivate("задача"))
+    }
+
+    @Test
+    fun `снимает обрамляющие ёлочки`() {
+        val client = RecordingClient(" «Дожми этот сервис до релиза!» ")
+        assertEquals(MotivationResult.Done("Дожми этот сервис до релиза!"), Motivator(client).motivate("задача"))
+    }
+
+    @Test
+    fun `ёлочки внутри фразы не трогает`() {
+        val client = RecordingClient("Скажи «поехали» и запусти деплой")
+        assertEquals(MotivationResult.Done("Скажи «поехали» и запусти деплой"), Motivator(client).motivate("задача"))
+    }
+
+    @Test
+    fun `схлопывает множественные пробелы и переводы строк в один пробел`() {
+        val client = RecordingClient("Вперёд,\n\n  к   цели\t— без   пауз!")
+        assertEquals(MotivationResult.Done("Вперёд, к цели — без пауз!"), Motivator(client).motivate("задача"))
+    }
+
+    @Test
+    fun `чистит комбинацию — кавычки, переводы строк и лишние пробелы разом`() {
+        val client = RecordingClient("\n \"Каждый  коммит\nприближает   релиз!\" \n")
+        assertEquals(MotivationResult.Done("Каждый коммит приближает релиз!"), Motivator(client).motivate("задача"))
     }
 
     // ── транспортные ошибки → Failed, не исключение ──
