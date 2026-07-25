@@ -33,8 +33,10 @@
   (405 → 413 до чтения тела → 400 → 502), access-лог, ошибки `{"error":{code,message}}`;
 - `WebUi.kt` — одностраничный веб-UI (GET `/`): самодостаточный HTML с инлайн CSS/JS,
   тёмная тема, без внешних ресурсов; fetch к `POST /v1/motivate` и `GET /v1/history`,
-  ошибки API показываются текстом из `error.message`; стабильные id для автотестов —
-  `taskInput`, `motivateBtn`, `phraseBox`, `errorBox`, `historyList` (записи — `li.history-item`);
+  ошибки API показываются текстом из `error.message`; кнопка «Скопировать» (`#copyBtn`)
+  рядом с фразой копирует её в буфер обмена (Clipboard API) и видна только когда фраза есть;
+  стабильные id для автотестов — `taskInput`, `motivateBtn`, `phraseBox`, `copyBtn`,
+  `errorBox`, `historyList`, `clearHistoryBtn` (записи — `li.history-item`);
 - `Main.kt` — только wiring.
 
 ## Запуск
