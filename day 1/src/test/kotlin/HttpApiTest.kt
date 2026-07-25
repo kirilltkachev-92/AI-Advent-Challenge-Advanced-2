@@ -211,6 +211,32 @@ class HttpApiTest {
         )
     }
 
+    // ── /v1/limits ──
+
+    @Test
+    fun `limits отдаёт 200 с действующими лимитами и моделью`() {
+        val response = get("/v1/limits")
+        assertEquals(200, response.statusCode())
+
+        val body = json.parseToJsonElement(response.body()).jsonObject
+        assertEquals(Config.maxTaskChars(), body.getValue("max_task_chars").jsonPrimitive.int)
+        assertEquals(Config.maxBodyBytes(), body.getValue("max_body_bytes").jsonPrimitive.int)
+        assertEquals(Config.historySize(), body.getValue("history_size").jsonPrimitive.int)
+        assertEquals(Config.deepSeekModel(), body.getValue("model").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `limits POST отклоняется 405 в обычном формате ошибок`() {
+        val response = post("/v1/limits", "{}")
+        assertEquals(405, response.statusCode())
+        assertEquals("method_not_allowed", errorCode(response.body()))
+    }
+
+    @Test
+    fun `limits DELETE отклоняется 405`() {
+        assertEquals(405, delete("/v1/limits").statusCode())
+    }
+
     @Test
     fun `history POST отклоняется 405`() {
         val response = post("/v1/history", "{}")

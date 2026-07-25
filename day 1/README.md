@@ -16,6 +16,7 @@
 клиент ◀──{"task","phrase","model"}─────────┘
 клиент ──GET /v1/history──▶ HttpApi ──▶ HistoryStore.snapshot() (свежие первыми)
 клиент ──DELETE /v1/history▶ HttpApi ──▶ HistoryStore.clear() → {"cleared": true}
+клиент ──GET /v1/limits──▶ HttpApi ──▶ Config (max_task_chars, max_body_bytes, history_size, model)
 клиент ──GET /healthz────▶ HttpApi (статус, модель, аптайм, счётчик)
 браузер ──GET /──────────▶ HttpApi ──▶ WebUi.PAGE (одностраничный UI, text/html)
 ```
@@ -66,4 +67,7 @@ cp .env.example .env   # вписать DEEPSEEK_API_KEY
       история с автообновлением (`WebUi.kt`); не-GET → 405, неизвестный путь → 404 JSON;
 - [x] очистка истории — `DELETE /v1/history` → 200 `{"cleared": true}`
       (`HistoryStore.clear()`), в UI кнопка «Очистить историю» (`#clearHistoryBtn`)
-      без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`.
+      без confirm-диалогов; покрыто тестами в `HttpApiTest` и `HistoryStoreTest`;
+- [x] `GET /v1/limits` — действующие лимиты сервиса: 200
+      `{"max_task_chars", "max_body_bytes", "history_size", "model"}` (значения из
+      `Config`); не-GET → 405 в обычном формате ошибок; покрыто `HttpApiTest`.
