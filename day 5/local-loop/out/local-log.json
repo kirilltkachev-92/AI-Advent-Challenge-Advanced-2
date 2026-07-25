@@ -1,0 +1,45 @@
+[
+  {
+    "task": 1,
+    "name": "banner",
+    "ok": true,
+    "sec": 16,
+    "tok_per_sec": 47.0,
+    "files": 1,
+    "errors": []
+  },
+  {
+    "task": 2,
+    "name": "ui-time",
+    "ok": true,
+    "sec": 54,
+    "tok_per_sec": 46.0,
+    "files": 1,
+    "errors": []
+  },
+  {
+    "task": 3,
+    "name": "demo-codes",
+    "ok": true,
+    "sec": 11,
+    "tok_per_sec": 48.9,
+    "files": 1,
+    "errors": []
+  },
+  {
+    "task": 4,
+    "name": "sealed",
+    "ok": false,
+    "sec": 55,
+    "tok_per_sec": 46.0,
+    "files": 3,
+    "errors": [
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:33:35 Argument type mismatch: actual type is 'kotlin.String', but 'kotlinx.serialization.json.JsonElement' was expected.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:34:34 Argument type mismatch: actual type is 'kotlin.String', but 'kotlinx.serialization.json.JsonElement' was expected.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:35:39 Argument type mismatch: actual type is 'kotlin.Long', but 'kotlinx.serialization.json.JsonElement' was expected.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:36:44 Argument type mismatch: actual type is 'kotlin.Long', but 'kotlinx.serialization.json.JsonElement' was expected.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:49:72 Argument type mismatch: actual type is 'kotlin.Boolean', but 'kotlinx.serialization.json.JsonElement' was expected.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/local-wt/day%201/src/main/kotlin/HttpApi.kt:83:61 Argument type mismatch: actual type is 'kotlin.String', but 'kotlinx.serialization.json.JsonElement' was expected."
+    ]
+  }
+]
