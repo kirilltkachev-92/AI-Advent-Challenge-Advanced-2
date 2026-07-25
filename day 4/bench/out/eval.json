@@ -1,0 +1,63 @@
+{
+  "day-coder-taskA": {
+    "files": 6,
+    "kt_files": 5,
+    "model-build": "FAIL",
+    "model-build-error": [
+      "BUILD FAILED in 516ms"
+    ],
+    "reference-build": "FAIL",
+    "reference-build-error": [
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/day-coder/reference-build/src/main/kotlin/Main.kt:2:18 Unresolved reference 'HttpServer'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/day-coder/reference-build/src/main/kotlin/Main.kt:2:36 Unresolved reference 'InetSocketAddress'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/day-coder/reference-build/src/main/kotlin/Main.kt:4:59 No value passed for parameter 'client'.",
+      "BUILD FAILED in 974ms"
+    ],
+    "rule-package": "OK",
+    "rule-no-sdk": "OK"
+  },
+  "day-coder-taskB": {
+    "patch_emitted": true,
+    "cause_found": true,
+    "tests": "FAIL",
+    "tests-error": [
+      "BUILD FAILED in 1s"
+    ]
+  },
+  "qwen2.5-14b-taskA": {
+    "files": 4,
+    "kt_files": 4,
+    "model-build": "FAIL",
+    "model-build-error": [
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:1:12 Unresolved reference 'fasterxml'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:2:12 Unresolved reference 'fasterxml'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:5:26 Unresolved reference 'jacksonObjectMapper'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:6:41 Unresolved reference 'JsonNode'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:8:26 Unresolved reference 'HttpExchange'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:9:22 Unresolved reference 'requestMethod'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:10:22 Unresolved reference 'sendResponseHeaders'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/model-build/src/main/kotlin/HistoryHandler.kt:13:54 Cannot infer type for this parameter. Please specify it explicitly."
+    ],
+    "reference-build": "FAIL",
+    "reference-build-error": [
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:1:12 Unresolved reference 'fasterxml'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:2:12 Unresolved reference 'fasterxml'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:5:26 Unresolved reference 'jacksonObjectMapper'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:6:41 Unresolved reference 'JsonNode'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:8:26 Unresolved reference 'HttpExchange'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:9:22 Unresolved reference 'requestMethod'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:10:22 Unresolved reference 'sendResponseHeaders'.",
+      "e: file:///private/tmp/claude-501/-Users-kirill-Documents-AI-Advent-Challenge-Advanced-2/fcd67035-8a19-40e3-b66c-7355fdcf4b5d/scratchpad/bench-sandbox/qwen2.5-14b/reference-build/src/main/kotlin/HistoryHandler.kt:13:54 Cannot infer type for this parameter. Please specify it explicitly."
+    ],
+    "rule-package": "OK",
+    "rule-no-sdk": "OK"
+  },
+  "qwen2.5-14b-taskB": {
+    "patch_emitted": true,
+    "cause_found": true,
+    "tests": "FAIL",
+    "tests-error": [
+      "BUILD FAILED in 886ms"
+    ]
+  }
+}

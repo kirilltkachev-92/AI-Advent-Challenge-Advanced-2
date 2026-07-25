@@ -1,0 +1,50 @@
+{
+  "day-coder-taskA": {
+    "total_sec": 24.6,
+    "load_sec": 1.2,
+    "prompt_tokens": 759,
+    "out_tokens": 1096,
+    "tok_per_sec": 50.2,
+    "files_emitted": 6
+  },
+  "day-coder-taskB": {
+    "total_sec": 8.8,
+    "load_sec": 0.1,
+    "prompt_tokens": 1177,
+    "out_tokens": 374,
+    "tok_per_sec": 50.4,
+    "files_emitted": 1
+  },
+  "qwen2.5-14b-taskA": {
+    "total_sec": 41.0,
+    "load_sec": 5.2,
+    "prompt_tokens": 759,
+    "out_tokens": 828,
+    "tok_per_sec": 25.5,
+    "files_emitted": 4
+  },
+  "qwen2.5-14b-taskB": {
+    "total_sec": 17.7,
+    "load_sec": 0.1,
+    "prompt_tokens": 1177,
+    "out_tokens": 383,
+    "tok_per_sec": 25.6,
+    "files_emitted": 1
+  },
+  "deepseek-coder-6.7b-taskA": {
+    "total_sec": 61.7,
+    "load_sec": 1.9,
+    "prompt_tokens": 1048,
+    "out_tokens": 2581,
+    "tok_per_sec": 44.8,
+    "files_emitted": 0
+  },
+  "deepseek-coder-6.7b-taskB": {
+    "total_sec": 19.2,
+    "load_sec": 0.0,
+    "prompt_tokens": 1622,
+    "out_tokens": 784,
+    "tok_per_sec": 46.2,
+    "files_emitted": 0
+  }
+}

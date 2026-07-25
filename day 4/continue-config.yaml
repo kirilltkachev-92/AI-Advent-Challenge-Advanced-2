@@ -1,0 +1,77 @@
+name: AI Advent Local Boost
+version: 0.0.1
+schema: v1
+
+# Локальная связка (день 4): Ollama на M4 Pro / 24 GB.
+# Чат/эдит — qwen2.5-coder:7b, автокомплит — qwen2.5-coder:1.5b-base (FIM),
+# индекс кодовой базы — nomic-embed-text. Всё офлайн.
+models:
+  - name: Qwen2.5 Coder 7B (local)
+    provider: ollama
+    model: qwen2.5-coder:7b
+    roles: [chat, edit, apply]
+    defaultCompletionOptions:
+      temperature: 0.2    # код — низкая температура
+      topP: 0.9
+      contextLength: 16384
+
+  - name: DeepSeek Coder 6.7B (local)
+    provider: ollama
+    model: deepseek-coder:6.7b
+    roles: [chat, edit]
+    defaultCompletionOptions:
+      temperature: 0.2
+      topP: 0.9
+      contextLength: 16384
+
+  - name: Qwen2.5 14B (local, generalist)
+    provider: ollama
+    model: qwen2.5:14b
+    roles: [chat]
+    defaultCompletionOptions:
+      temperature: 0.2
+      topP: 0.9
+      contextLength: 8192   # 14B на 24 GB: контекст скромнее, чтобы не свопить
+
+  - name: Autocomplete 1.5B
+    provider: ollama
+    model: qwen2.5-coder:1.5b-base
+    roles: [autocomplete]
+    defaultCompletionOptions:
+      temperature: 0.1
+      maxTokens: 256
+
+  - name: Nomic Embed
+    provider: ollama
+    model: nomic-embed-text
+    roles: [embed]
+
+# Правила проекта (перенос CLAUDE.md дня 1 в системный промпт локальной модели)
+rules:
+  - >
+    Проект — марафон "day N" подпроектов. Стек: Kotlin 2.0.21, JVM 17, Gradle;
+    единственная зависимость kotlinx-serialization-json:1.7.3. HTTP-клиент — только
+    java.net.http.HttpClient, сервер — только com.sun.net.httpserver.HttpServer.
+    ЗАПРЕЩЕНО: ktor/okhttp/retrofit/spring/LLM-SDK, секреты в коде, package-декларации
+    (весь код в default package), God-Main.kt (>300 строк, Main — только wiring),
+    шаринг кода между днями, молчаливое глотание не-2xx ответов HTTP.
+  - >
+    Структура дня: плоский src/main/kotlin, один тип = один файл PascalCase,
+    Main.kt -> fun main(), Config.kt — object с env/.env, точка входа mainClass=MainKt.
+    Идентификаторы и коммиты — английские, комментарии и UI-строки — русские.
+    Паттерны: Config-object с типизированными геттерами; тонкий HTTP-клиент с
+    таймаутами и check(status == 200) { body.take(300) }; sealed-результаты для
+    операций с исходами; оборона HTTP на входе строго 405 -> 401 -> 429 -> 413
+    (по Content-Length ДО чтения тела) -> 400; формат ошибок
+    {"error": {"code": "...", "message": "..."}}; access-лог одной строкой.
+    Тесты: kotlin-test + junit-jupiter 5.11.3, без сети, LLM подменять фейком
+    через fun interface ChatClient.
+
+context:
+  - provider: file
+  - provider: code
+  - provider: codebase
+  - provider: folder
+  - provider: diff
+  - provider: terminal
+  - provider: problems
