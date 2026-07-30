@@ -35,4 +35,7 @@ object Config {
     fun openAiApiKey(): String? = envValue("OPENAI_API_KEY")
     fun openAiBaseModel(): String = envValue("OPENAI_BASE_MODEL") ?: "gpt-4o-mini"
     fun fineTuneModel(): String = envValue("FINETUNE_MODEL") ?: "gpt-4o-mini-2024-07-18"
+
+    fun ollamaBaseUrl(): String = envValue("OLLAMA_BASE_URL") ?: "http://localhost:11434"
+    fun localModel(): String = envValue("LOCAL_MODEL") ?: "qwen2.5:14b"
 }

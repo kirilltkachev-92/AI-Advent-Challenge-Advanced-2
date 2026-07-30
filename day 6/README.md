@@ -20,7 +20,8 @@ RealExamples (12 ручных)        DeepSeek jsonMode (44 синтетики, 
         data/train.jsonl (44)      data/eval.jsonl (12)
                        │                   │
      DatasetValidator (роли, метки,        │ первые 10 → BaselineRunner
-     единый system, sealed-результат)      ▼
+     единый system, sealed-результат)      │ (локальная qwen2.5:14b через ollama)
+                       │                   ▼
                        │            output/baseline.md (accuracy, format-compliance,
                        ▼             критерии улучшения после файнтюна)
      FineTuneClient: upload → job → poll (dry-run; --go для реального запуска)
@@ -36,8 +37,10 @@ RealExamples (12 ручных)        DeepSeek jsonMode (44 синтетики, 
   уже имеющиеся отзывы (анти-дубли) и дефицит по классам (баланс сходится к равному);
   ответам модели не доверяем — метки, длина и дубли перепроверяются кодом.
 - **`BaselineRunner`** — точка отсчёта: та же system-инструкция, temperature 0.0.
-  **Решение**: `OPENAI_API_KEY` не задан → baseline гонится через `deepseek-v4-flash`
-  (fallback, так и задумано); код для `gpt-4o-mini` готов и включается просто ключом в `.env`.
+  **Решение** (по UPD дня 6: OpenAI закрыл self-serve файнтюн → baseline на локальной
+  модели): выбор модели — `OPENAI_API_KEY` задан → `gpt-4o-mini` (явный опт-ин);
+  иначе ollama доступен → **локальная `qwen2.5:14b`** (`OllamaClient`, OpenAI-совместимый
+  `/v1/chat/completions` без ключа); иначе fallback `deepseek-v4-flash`.
 - **`FineTuneClient`** — оркестрация Files API (multipart руками) + Fine-tuning API.
   По умолчанию dry-run: печатает пошагово запросы и тела, ничего не отправляя.
   Реальный запуск — только `./run.sh finetune --go` при наличии `OPENAI_API_KEY`.
@@ -49,9 +52,11 @@ RealExamples (12 ручных)        DeepSeek jsonMode (44 синтетики, 
 | примеров | 56 (12 реальных + 44 синтетики) | 44 | 12 |
 | баланс (поз/нейтр/нег) | 19/19/18 | 15/15/14 | 4/4/4 |
 
-Baseline `deepseek-v4-flash` на 10 примерах eval: **accuracy 8/10**,
-format-compliance **10/10** (обе ошибки — «нейтральный» распознан как «позитивный»).
-Полная таблица и критерии улучшения — `output/baseline.md`.
+Baseline локальной `qwen2.5:14b` (ollama) на 10 примерах eval: **accuracy 7/10**,
+format-compliance **8/10** — две ошибки формата («Позитивный» с заглавной) и одна
+ошибка метки («нейтральный» → «позитивный»). Хорошая точка отсчёта для файнтюна:
+есть что чинить и по формату, и по точности. Полная таблица и критерии —
+`output/baseline.md`. (Предыдущий замер на облачной `deepseek-v4-flash`: 8/10 и 10/10.)
 
 ## Запуск
 
@@ -69,7 +74,9 @@ cp .env.example .env        # вписать DEEPSEEK_API_KEY (OPENAI_API_KEY �
 | Переменная | Дефолт | Зачем |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | — (обязателен) | генерация синтетики, fallback-baseline |
-| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | модель генерации/baseline на DeepSeek |
+| `DEEPSEEK_MODEL` | `deepseek-v4-flash` | модель генерации/fallback-baseline на DeepSeek |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | локальный ollama для baseline (UPD дня 6) |
+| `LOCAL_MODEL` | `qwen2.5:14b` | локальная модель baseline через ollama |
 | `OPENAI_API_KEY` | — (опционален) | baseline на gpt-4o-mini + реальный файнтюн |
 | `OPENAI_BASE_MODEL` | `gpt-4o-mini` | базовая модель baseline при наличии ключа |
 | `FINETUNE_MODEL` | `gpt-4o-mini-2024-07-18` | модель, на которой создаётся fine-tuning job |
@@ -83,5 +90,6 @@ cp .env.example .env        # вписать DEEPSEEK_API_KEY (OPENAI_API_KEY �
 - [x] Подготовка: очистка (дубли по каноничному ключу, пустые, длина, метки) с отчётом причин.
 - [x] Split 80/20 стратифицированный, детерминированный (Random(42)).
 - [x] Валидатор JSONL: роли по порядку, непустой content, метки, единый system; sealed `ValidationResult`, ненулевой exit code.
-- [x] Baseline на 10 примерах eval + критерии улучшения — `output/baseline.md` (accuracy 8/10, format 10/10).
+- [x] Baseline на 10 примерах eval + критерии улучшения — `output/baseline.md` (локальная qwen2.5:14b: accuracy 7/10, format 8/10).
+- [x] UPD дня 6 учтён: baseline снят на локальной модели через ollama (OpenAI закрыл self-serve файнтюн).
 - [x] Клиент файнтюна подготовлен (upload → job → poll), но НЕ запущен: dry-run по умолчанию, реальный запуск только `--go` + ключ.

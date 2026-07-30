@@ -4,9 +4,12 @@ import java.nio.file.Path
 
 /**
  * Baseline-замер БАЗОВОЙ модели без файнтюна на первых 10 примерах eval.jsonl —
- * точка отсчёта для сравнения «до/после». Модель: gpt-4o-mini при наличии
- * OPENAI_API_KEY, иначе fallback на DeepSeek (какая использована — печатается
- * и фиксируется в отчёте). temperature 0.0 — замер должен быть воспроизводимым.
+ * точка отсчёта для сравнения «до/после». Выбор модели (по UPD дня 6 baseline
+ * снимается на локальной модели, т.к. OpenAI закрыл self-serve файнтюн):
+ * OPENAI_API_KEY задан → gpt-4o-mini (явный опт-ин);
+ * иначе ollama доступен → локальная модель (LOCAL_MODEL, дефолт qwen2.5:14b);
+ * иначе fallback на DeepSeek. Какая модель использована — печатается и
+ * фиксируется в отчёте. temperature 0.0 — замер должен быть воспроизводимым.
  * Пишет output/baseline.md: таблица ответов + accuracy + format-compliance +
  * критерии улучшения после файнтюна; итоги дублируются в консоль.
  */
@@ -23,20 +26,31 @@ class BaselineRunner(private val sampleSize: Int = 10) {
             .take(sampleSize)
         check(examples.isNotEmpty()) { "eval.jsonl пуст" }
 
-        // Выбор модели: OpenAI при наличии ключа, иначе DeepSeek как точка отсчёта
         val openAiKey = Config.openAiApiKey()
+        val ollama = OllamaClient()
         val modelName: String
+        val provider: String
         val ask: (String) -> String
-        if (openAiKey != null) {
-            modelName = Config.openAiBaseModel()
-            val client = OpenAiClient(openAiKey)
-            ask = { review -> client.chat(TrainingExample.SYSTEM_PROMPT, review, temperature = 0.0) }
-        } else {
-            modelName = Config.deepSeekModel()
-            val client = DeepSeekClient()
-            ask = { review -> client.chat(TrainingExample.SYSTEM_PROMPT, review, temperature = 0.0) }
+        when {
+            openAiKey != null -> {
+                modelName = Config.openAiBaseModel()
+                provider = "OpenAI (OPENAI_API_KEY задан)"
+                val client = OpenAiClient(openAiKey)
+                ask = { review -> client.chat(TrainingExample.SYSTEM_PROMPT, review, temperature = 0.0) }
+            }
+            ollama.isReachable() -> {
+                modelName = Config.localModel()
+                provider = "локальная модель через ollama (по UPD дня 6)"
+                ask = { review -> ollama.chat(TrainingExample.SYSTEM_PROMPT, review, temperature = 0.0) }
+            }
+            else -> {
+                modelName = Config.deepSeekModel()
+                provider = "fallback DeepSeek (ollama недоступен, OPENAI_API_KEY не задан)"
+                val client = DeepSeekClient()
+                ask = { review -> client.chat(TrainingExample.SYSTEM_PROMPT, review, temperature = 0.0) }
+            }
         }
-        println("Baseline-модель: $modelName (OPENAI_API_KEY ${if (openAiKey != null) "задан" else "не задан → fallback DeepSeek"})")
+        println("Baseline-модель: $modelName — $provider")
 
         val rows = examples.mapIndexed { index, example ->
             val answer = ask(example.reviewText)
@@ -50,14 +64,14 @@ class BaselineRunner(private val sampleSize: Int = 10) {
         println("Format-compliance (ровно одно слово из трёх): $format/${rows.size}")
 
         Files.createDirectories(Path.of("output"))
-        Files.writeString(Path.of("output/baseline.md"), renderReport(modelName, rows, exact, format))
+        Files.writeString(Path.of("output/baseline.md"), renderReport(modelName, provider, rows, exact, format))
         println("Отчёт: output/baseline.md")
     }
 
-    private fun renderReport(model: String, rows: List<BaselineRow>, exact: Int, format: Int): String = buildString {
+    private fun renderReport(model: String, provider: String, rows: List<BaselineRow>, exact: Int, format: Int): String = buildString {
         appendLine("# Baseline: базовая модель без файнтюна")
         appendLine()
-        appendLine("- Модель: `$model`" + if (Config.openAiApiKey() == null) " (fallback: OPENAI_API_KEY не задан, gpt-4o-mini включается ключом)" else "")
+        appendLine("- Модель: `$model` — $provider")
         appendLine("- Данные: первые ${rows.size} примеров `data/eval.jsonl`, temperature 0.0")
         appendLine("- System-промпт тот же, что в датасете файнтюна")
         appendLine()
