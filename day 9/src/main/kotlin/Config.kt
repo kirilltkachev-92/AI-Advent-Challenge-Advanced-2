@@ -46,4 +46,18 @@ object Config {
 
     /** Монолитный вариант A: всё одним промптом и одним вызовом. */
     fun monoModel(): String = envValue("MONO_MODEL") ?: DEFAULT_MODEL
+
+    // Микс-прогон (`run mixed`): демонстрация «своя модель на каждый этап».
+    // Pro — только на этапе 1: разбор зашумлённого текста — единственная «трудная»
+    // часть конвейера; правила (этап 2) и формулировка (этап 3) механические,
+    // им хватает flash.
+
+    /** Этап 1 в микс-прогоне: сильная модель на самый сложный этап. */
+    fun mixedStage1Model(): String = envValue("MIXED_STAGE1_MODEL") ?: "deepseek-v4-pro"
+
+    /** Этап 2 в микс-прогоне: дешёвая модель — правила над 7 полями. */
+    fun mixedStage2Model(): String = envValue("MIXED_STAGE2_MODEL") ?: DEFAULT_MODEL
+
+    /** Этап 3 в микс-прогоне: дешёвая модель — вежливая формулировка готового решения. */
+    fun mixedStage3Model(): String = envValue("MIXED_STAGE3_MODEL") ?: DEFAULT_MODEL
 }

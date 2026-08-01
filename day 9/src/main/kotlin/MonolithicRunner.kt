@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 class MonolithicRunner(
     private val client: DeepSeekClient = DeepSeekClient(),
-    private val model: String = Config.monoModel(),
+    val model: String = Config.monoModel(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 

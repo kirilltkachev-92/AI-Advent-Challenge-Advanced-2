@@ -16,9 +16,9 @@ import kotlinx.serialization.json.put
  */
 class StagePipeline(
     private val client: DeepSeekClient = DeepSeekClient(),
-    private val stage1Model: String = Config.stage1Model(),
-    private val stage2Model: String = Config.stage2Model(),
-    private val stage3Model: String = Config.stage3Model(),
+    val stage1Model: String = Config.stage1Model(),
+    val stage2Model: String = Config.stage2Model(),
+    val stage3Model: String = Config.stage3Model(),
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ./run.sh <command>
-#   run           — 10 кейсов × (монолит A + конвейер B) + output/report.md
+#   run           — 16 кейсов × (монолит A + конвейер B) + output/report.md
+#   mixed         — те же кейсы, конвейер на смешанных моделях (этап 1 — pro);
+#                   секция дописывается в конец output/report.md
 #   one "<текст>" — оба варианта на одном тексте, подробный вывод + кодовая проверка
 set -euo pipefail
 cd "$(dirname "$0")"
