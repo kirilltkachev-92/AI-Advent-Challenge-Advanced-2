@@ -1,0 +1,12 @@
+.gradle/
+build/
+.idea/
+*.iml
+.env
+.kotlin/
+# output/* (а не output/) — иначе git не даст переоткрыть файлы внутри исключённого каталога
+output/*
+# отчёты эталонного прогона коммитятся: на них ссылаются README и demo.sh
+!output/report.md
+!output/transcript.md
+!output/catalog.md
