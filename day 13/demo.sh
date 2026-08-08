@@ -24,7 +24,7 @@ request() {
     exit 1
   fi
   echo "HTTP $code (как и ожидалось)"
-  if ! python3 -m json.tool <<<"$body"; then
+  if ! python3 -m json.tool --no-ensure-ascii <<<"$body"; then
     echo "FAIL: тело ответа — не JSON: $body" >&2
     exit 1
   fi
