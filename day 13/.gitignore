@@ -1,0 +1,8 @@
+.gradle/
+build/
+.idea/
+*.iml
+.env
+.kotlin/
+# output/* (а не output/) — иначе git не даст переоткрыть файлы внутри исключённого каталога
+output/*
