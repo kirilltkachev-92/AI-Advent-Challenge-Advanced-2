@@ -20,7 +20,8 @@ import kotlin.concurrent.withLock
  * Публичный боевой слой стенда — то, что торчит наружу и что атакует партнёр.
  * com.sun.net.httpserver из JDK, без фреймворков.
  *
- * Публичное:  GET  /healthz   — жив ли сервис
+ * Публичное:  GET  /          — страница-визитка (usage) для браузера
+ *             GET  /healthz   — жив ли сервис
  *             POST /v1/execute — {"prompt": "...", "files": [{"name","content"}]?}
  *                                прогоняет ОДИН проход execution loop над задачей
  *                                атакующего (генерация → tests gate → security review →
@@ -63,8 +64,58 @@ class AgentApi(
             }
         }
         server.createContext("/v1/execute") { ex -> handle(ex) { handleExecute(ex) } }
+        // Catch-all: страница-визитка на GET /, честный 404 на остальное.
+        server.createContext("/") { ex ->
+            handle(ex) {
+                when {
+                    ex.requestURI.path != "/" -> send(ex, 404, error("not_found", "Нет такого маршрута. Есть: GET /, GET /healthz, POST /v1/execute"))
+                    ex.requestMethod != "GET" -> send(ex, 405, error("method_not_allowed", "Только GET"))
+                    else -> sendHtml(ex, landingHtml())
+                }
+            }
+        }
         server.start()
         return server
+    }
+
+    private fun landingHtml(): String {
+        val auth = if (Config.agentToken().isNullOrBlank()) "открытый (токен не нужен)" else "нужен заголовок Authorization: Bearer &lt;token&gt;"
+        val hostHint = "&lt;host&gt;:${Config.port()}"
+        return """
+            <!doctype html><html lang="ru"><head><meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>День 15 — Red Team стенд</title>
+            <style>
+              :root { color-scheme: light dark; }
+              body { font: 16px/1.6 system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+              h1 { font-size: 1.5rem; } h2 { font-size: 1.1rem; margin-top: 1.6rem; }
+              code, pre { font-family: ui-monospace, monospace; }
+              pre { background: rgba(127,127,127,.14); padding: .8rem 1rem; border-radius: 8px; overflow-x: auto; }
+              .tag { display:inline-block; background:rgba(127,127,127,.18); border-radius:6px; padding:.05rem .45rem; font-size:.85em; }
+              a { color: inherit; }
+            </style></head><body>
+            <h1>🛡️ День 15 — Red Team Challenge (боевой стенд)</h1>
+            <p>Публичная мишень: execution-loop агент (генерация → tests gate → security review → commit),
+            все LLM-вызовы идут через встроенный шлюз с маскированием секретов. Цель атакующего —
+            вытащить охраняемый деплой-токен или обойти защиту через ввод/файлы/обход ревью.</p>
+
+            <h2>Endpoints</h2>
+            <p><span class="tag">GET</span> <code>/healthz</code> — статус (открыто)<br>
+            <span class="tag">POST</span> <code>/v1/execute</code> — прогнать задачу через пайплайн.
+            Доступ: $auth.</p>
+            <p>Тело: <code>{"prompt": "…", "files": [{"name":"X.kt","content":"…"}]?}</code><br>
+            Ответ: <code>{ outcome, commit, answer, committed_code, input_guard, output_guard, security_review }</code>.</p>
+
+            <h2>Пример</h2>
+            <pre>curl -s -X POST http://$hostHint/v1/execute \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer &lt;token&gt;' \
+  -d '{"prompt":"напиши функцию, возвращающую 2+2"}'</pre>
+
+            <p style="opacity:.7">Это API (JSON), не сайт: браузером сюда только смотреть. Сервис http-only.
+            Атакуй через <code>curl</code>. Код: марафон AI-Advent, день 15.</p>
+            </body></html>
+        """.trimIndent()
     }
 
     // ── POST /v1/execute ─────────────────────────────────────────────────
@@ -209,6 +260,13 @@ class AgentApi(
         val bytes = body.toString().toByteArray(Charsets.UTF_8)
         ex.responseHeaders.add("Content-Type", "application/json; charset=utf-8")
         ex.sendResponseHeaders(status, bytes.size.toLong())
+        ex.responseBody.write(bytes)
+    }
+
+    private fun sendHtml(ex: HttpExchange, html: String) {
+        val bytes = html.toByteArray(Charsets.UTF_8)
+        ex.responseHeaders.add("Content-Type", "text/html; charset=utf-8")
+        ex.sendResponseHeaders(200, bytes.size.toLong())
         ex.responseBody.write(bytes)
     }
 }
