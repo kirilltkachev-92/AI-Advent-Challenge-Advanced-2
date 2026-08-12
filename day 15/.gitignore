@@ -10,3 +10,6 @@ output/*
 !output/report.md
 !output/attack-report.md
 !output/defense-report.md
+# red-team против партнёра (jWorkPlace): отчёт атакующего + сырые ответы-доказательства
+!output/attack-report-vs-jworkplace.txt
+!output/attack-raw-responses.log
